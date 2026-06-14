@@ -97,6 +97,24 @@ gh pr create --title "<título>" --body "<body>" [--draft si se pasó --draft]
 
 Mostrar la URL del PR creado.
 
+### Paso 6 — Guardar en memoria engram
+
+Después de crear el PR exitosamente, agregar una entrada al archivo de memoria:
+`C:\Users\naide\.claude\projects\C--Users-naide\memory\changes-log.md`
+
+Formato de la entrada a agregar al final del archivo:
+```
+- YYYY-MM-DD | <alias del proyecto activo> | pr | <título del PR>
+```
+
+Ejemplo:
+```
+- 2026-06-14 | bodega ecommerce | pr | Implementa sección La Bodega TV con lives y blog
+```
+
+Si no se conoce el alias del proyecto activo, usar el nombre de la carpeta del repo.
+Si el archivo supera 100 entradas, eliminar las más antiguas hasta quedar en 100.
+
 ### Detectar la rama base
 
 Orden de preferencia:

@@ -99,6 +99,24 @@ git commit -m "<mensaje>"
 
 Mostrar el hash del commit resultante.
 
+### Paso 6 — Guardar en memoria engram
+
+Después de un commit exitoso, agregar una entrada al archivo de memoria:
+`C:\Users\naide\.claude\projects\C--Users-naide\memory\changes-log.md`
+
+Formato de la entrada a agregar al final del archivo:
+```
+- YYYY-MM-DD | <alias del proyecto activo> | commit | <primera línea del mensaje de commit>
+```
+
+Ejemplo:
+```
+- 2026-06-14 | yalo bo api | commit | fix(auth): corrige validación de token expirado
+```
+
+Si no se conoce el alias del proyecto activo, usar el nombre de la carpeta del repo.
+Si el archivo supera 100 entradas, eliminar las más antiguas hasta quedar en 100.
+
 ## Notas
 - No incluir "Co-Authored-By" ni referencias a Claude en el mensaje
 - No usar emojis
