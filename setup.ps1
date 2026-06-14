@@ -15,11 +15,11 @@ Write-Host "Claude home:   $ClaudeHome"
 Write-Host "Proyectos:     $ProjectsRoot"
 Write-Host ""
 
-# 1. Skill /proyecto
-Write-Host "1. Instalando skill /proyecto..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force "$ClaudeHome\skills" | Out-Null
-Copy-Item "$ScriptDir\skills\proyecto.md" "$ClaudeHome\skills\proyecto.md" -Force
-Write-Host "   OK -> $ClaudeHome\skills\proyecto.md" -ForegroundColor Green
+# 1. Comandos custom (/proyecto, /scan, /commit, /pr)
+Write-Host "1. Instalando comandos custom..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Force "$ClaudeHome\commands" | Out-Null
+Copy-Item "$ScriptDir\commands\*.md" "$ClaudeHome\commands\" -Force
+Write-Host "   OK -> $((Get-ChildItem "$ScriptDir\commands\*.md").Count) comandos instalados en $ClaudeHome\commands\" -ForegroundColor Green
 
 # 2. Registry editable
 Write-Host "2. Copiando registry de proyectos..." -ForegroundColor Yellow
