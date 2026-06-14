@@ -1,3 +1,7 @@
+---
+description: Genera commits descriptivos en español — analiza el diff staged, lista archivos tocados y confirma antes de ejecutar
+---
+
 # commit
 
 Genera un commit descriptivo en español analizando los cambios staged. Muestra qué archivos se tocaron, qué cambió y por qué.

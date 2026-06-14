@@ -1,3 +1,7 @@
+---
+description: Genera Pull Requests descriptivos en español — título, cambios realizados, tabla de archivos y checklist de pruebas
+---
+
 # pr
 
 Genera un Pull Request descriptivo en español analizando todos los commits y cambios de la rama actual vs la rama base. Muestra qué se hizo, qué archivos se tocaron y un checklist de pruebas.
