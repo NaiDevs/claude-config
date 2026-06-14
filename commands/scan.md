@@ -1,3 +1,7 @@
+---
+description: Sweeps multi-repo en paralelo — qué cambió hoy, qué hizo [autor], repos con cambios pendientes
+---
+
 # scan
 
 Hace sweeps multi-repo eficientes usando subagentes Haiku en paralelo. Sirve para consultas del tipo "qué cambió hoy", "qué hizo [autor]" o "cuáles repos tienen cambios pendientes" — sin cargar cada repo en el contexto principal.

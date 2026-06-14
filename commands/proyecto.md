@@ -1,3 +1,7 @@
+---
+description: Navega entre proyectos y workspaces por alias, muestra git status y sincroniza con remotos
+---
+
 # proyecto
 
 Lee `~/.claude/projects-registry.md` para resolver aliases de proyectos y workspaces. Gestiona navegación entre proyectos y sincronización con repositorios remotos usando subagentes Haiku para operaciones git.
