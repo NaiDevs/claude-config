@@ -30,20 +30,19 @@ Extraer:
 
 ### Paso 2 — Resolver el proyecto
 
-Leer `~/.claude/projects-registry.md`, sección **Jira Projects**, y mapear el alias al Jira Key.
+**Siempre buscar en Jira directamente** usando `getVisibleJiraProjects` con el nombre que dijo el usuario como `searchString`.
 
 Ejemplos:
-- `yalo bo api` → `YAL` (YALOCobro)
-- `yalo vendo` → `YV` (YaloVendo)
-- `yalo agendo` → `YALOAG` (YaloAgendo)
-- `bodega *` → `LBO`
-- `bi *` → `CBI`
-- `cpa *` → `CC`
-- `ult *` → `UL`
-- `doctor *` → `ED`
+- "en el proyecto de YaloVendo" → `searchString: "YaloVendo"`
+- "en YALOCobro" → `searchString: "YALOCobro"`
+- "en La Bodega" → `searchString: "LaBodega"`
+- "en Corinsa CPA" → `searchString: "Corinsa CPA"`
 
-Si el usuario menciona el nombre del proyecto Jira directamente ("en YALOCobro", "en LaBodega"), usar ese key directamente.
-Si el proyecto no está en el registry: preguntar.
+Si la búsqueda devuelve un solo resultado → usar ese proyecto directamente.
+Si devuelve varios → mostrar la lista y preguntar cuál es.
+Si no encuentra nada → informar y pedir el nombre exacto.
+
+No asumir el key desde el registry — el usuario siempre va a nombrar el proyecto Jira, no el alias del repo.
 
 ### Paso 3 — Resolver el asignado
 
