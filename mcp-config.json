@@ -2,7 +2,6 @@
   "mcpServers": {
     "github":       { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"], "shell": "powershell" },
     "filesystem":   { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:/Users/{USERNAME}/OneDrive/Documentos/Proyectos", "C:/Users/{USERNAME}/.claude"], "shell": "powershell" },
-    "brave-search": { "command": "npx", "args": ["-y", "brave-search-mcp"], "shell": "powershell" },
     "memory":       { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"], "shell": "powershell" },
 
     "pg-labodega":     { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:LABODEGA_DEV"] },
