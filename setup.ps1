@@ -31,7 +31,12 @@ if (Test-Path $skillsPath) {
     }
 }
 
-# 2. Registry editable
+# 2. CLAUDE.md global — reglas siempre activas + auto-activación de skills
+Write-Host "2. Instalando CLAUDE.md global..." -ForegroundColor Yellow
+Copy-Item "$ScriptDir\CLAUDE.md" "$ClaudeHome\CLAUDE.md" -Force
+Write-Host "   OK -> $ClaudeHome\CLAUDE.md" -ForegroundColor Green
+
+# 3. Registry editable
 Write-Host "2. Copiando registry de proyectos..." -ForegroundColor Yellow
 Copy-Item "$ScriptDir\projects-registry.md" "$ClaudeHome\projects-registry.md" -Force
 Write-Host "   OK -> $ClaudeHome\projects-registry.md" -ForegroundColor Green
