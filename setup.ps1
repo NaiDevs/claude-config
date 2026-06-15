@@ -181,28 +181,65 @@ if ($installCodex) {
     Write-Host "┌─ Codex ─────────────────────────────────────┐" -ForegroundColor Magenta
     New-Item -ItemType Directory -Force $CodexHome | Out-Null
 
-    # Skills — convertir commands/*.md → ~/.codex/skills/<name>/SKILL.md
-    Write-Host "  Instalando skills..." -ForegroundColor Yellow
+    # Skills — convertir commands/*.md → ~/.codex/skills/<name>/SKILL.md + openai.yaml
+    Write-Host "  Instalando skills + agentes Codex..." -ForegroundColor Yellow
     $skillCount = 0
     Get-ChildItem "$ScriptDir\commands\*.md" | ForEach-Object {
-        $skillName = $_.BaseName
-        $skillDir  = "$CodexHome\skills\$skillName"
-        New-Item -ItemType Directory -Force $skillDir | Out-Null
+        $skillName    = $_.BaseName
+        $skillDir     = "$CodexHome\skills\$skillName"
+        $agentsDir    = "$skillDir\agents"
+        $skillContent = Get-Content $_.FullName -Encoding utf8 -Raw
+
+        # Extraer description del frontmatter
+        $description = $skillName   # fallback al nombre del skill
+        if ($skillContent -match '(?s)^---\s*\r?\n.*?description:\s*(.+?)\r?\n.*?---') {
+            $description = $matches[1].Trim()
+        }
+
+        # Nombre para mostrar — PascalCase del filename
+        $displayName = (Get-Culture).TextInfo.ToTitleCase($skillName.Replace('-', ' '))
+
+        # Crear estructura de directorios
+        New-Item -ItemType Directory -Force $skillDir   | Out-Null
+        New-Item -ItemType Directory -Force $agentsDir  | Out-Null
+
+        # Copiar SKILL.md
         Copy-Item $_.FullName "$skillDir\SKILL.md" -Force
+
+        # Generar openai.yaml — descripción en inglés simple para evitar problemas de encoding
+        $shortDesc     = "Use this skill for $skillName tasks and code generation."
+        $defaultPrompt = "Activate the $skillName skill to help with $skillName-related tasks, code generation, and patterns."
+        $yamlContent = @"
+interface:
+  display_name: "$displayName"
+  short_description: "$shortDesc"
+  default_prompt: "$defaultPrompt"
+"@
+        $yamlContent | Set-Content "$agentsDir\openai.yaml" -Encoding utf8
         $skillCount++
     }
-    Write-Host "  OK → $skillCount skills instalados en ~/.codex/skills/" -ForegroundColor Green
+    Write-Host "  OK → $skillCount skills + openai.yaml instalados en ~/.codex/skills/" -ForegroundColor Green
 
-    # Instructions (equivalente a CLAUDE.md)
-    $instrFile = "$CodexHome\engram-instructions.md"
-    $marker    = "<!-- nai-rules-start -->"
+    # Instructions (equivalente a CLAUDE.md) — adaptar sintaxis /cmd → $cmd para Codex
+    $instrFile     = "$CodexHome\engram-instructions.md"
+    $marker        = "<!-- nai-rules-start -->"
     $instrExisting = if (Test-Path $instrFile) { Get-Content $instrFile -Raw } else { "" }
     if ($instrExisting -notmatch [regex]::Escape($marker)) {
-        $naiRules = "`n`n$marker`n" + (Get-Content "$ScriptDir\CLAUDE.md" -Raw) + "`n<!-- nai-rules-end -->"
+        # Leer CLAUDE.md y adaptar sintaxis de skills para Codex
+        $claudeContent = Get-Content "$ScriptDir\CLAUDE.md" -Raw
+        # Reemplazar `/skill` → `$skill` en la tabla de auto-activación
+        $codexContent  = $claudeContent -replace '`/([a-z\-]+)`', '`$$1`'
+        $naiRules = "`n`n$marker`n$codexContent`n<!-- nai-rules-end -->"
         Add-Content $instrFile $naiRules -Encoding utf8
-        Write-Host "  OK → Reglas agregadas a engram-instructions.md" -ForegroundColor Green
+        Write-Host "  OK → Reglas agregadas a engram-instructions.md (sintaxis `$skill adaptada)" -ForegroundColor Green
     } else {
-        Write-Host "  OK → engram-instructions.md ya tenía las reglas" -ForegroundColor Green
+        # Actualizar si ya existe (re-generar con la versión actual)
+        $claudeContent = Get-Content "$ScriptDir\CLAUDE.md" -Raw
+        $codexContent  = $claudeContent -replace '`/([a-z\-]+)`', '`$$1`'
+        $newBlock      = "$marker`n$codexContent`n<!-- nai-rules-end -->"
+        $updated       = $instrExisting -replace "(?s)$([regex]::Escape($marker)).*?<!-- nai-rules-end -->", $newBlock
+        $updated | Set-Content $instrFile -Encoding utf8
+        Write-Host "  OK → engram-instructions.md actualizado" -ForegroundColor Green
     }
 
     # MCPs en config.toml — agregar secciones de DB si no existen
