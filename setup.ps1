@@ -15,11 +15,21 @@ Write-Host "Claude home:   $ClaudeHome"
 Write-Host "Proyectos:     $ProjectsRoot"
 Write-Host ""
 
-# 1. Comandos custom (/proyecto, /scan, /commit, /pr)
+# 1. Comandos custom — instalar en commands/ (ubicación correcta de Claude Code)
 Write-Host "1. Instalando comandos custom..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force "$ClaudeHome\commands" | Out-Null
 Copy-Item "$ScriptDir\commands\*.md" "$ClaudeHome\commands\" -Force
 Write-Host "   OK -> $((Get-ChildItem "$ScriptDir\commands\*.md").Count) comandos instalados en $ClaudeHome\commands\" -ForegroundColor Green
+
+# Limpiar ~/.claude/skills/ si tiene archivos viejos (skills/ era la ubicación incorrecta)
+$skillsPath = "$ClaudeHome\skills"
+if (Test-Path $skillsPath) {
+    $oldFiles = Get-ChildItem $skillsPath -ErrorAction SilentlyContinue
+    if ($oldFiles.Count -gt 0) {
+        $oldFiles | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "   OK -> $($oldFiles.Count) archivo(s) eliminado(s) de skills/ (ubicación obsoleta)" -ForegroundColor DarkYellow
+    }
+}
 
 # 2. Registry editable
 Write-Host "2. Copiando registry de proyectos..." -ForegroundColor Yellow
