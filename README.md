@@ -1,53 +1,113 @@
 # claude-config
 
-Configuración personal de Claude Code — proyectos, aliases, workspaces, skills, MCPs y memoria persistente.
+Configuración personal para **Claude Code** y/o **Codex** — proyectos, aliases, workspaces, skills, MCPs y memoria persistente.
 
-## Contenido
+Un solo repo, un solo `setup.ps1`, compatible con ambas herramientas.
 
-- **`CLAUDE.md`** — Reglas siempre activas + auto-activación de skills por contexto
-- **`projects-registry.md`** — Registro editable de proyectos, aliases, Jira keys y workspaces
-- **`commands/`** — 26 skills personalizados (`/angular`, `/nestjs`, `/dotnet`, `/swagger`, etc.)
-- **`memory/`** — Archivos de memoria por cliente (cargados automáticamente por Claude)
-- **`mcp-config.json`** — Configuración de MCPs locales (GitHub, Bases de datos, Filesystem, Memory)
-- **`mcp.env.example`** — Estructura de variables de entorno para MCPs (copiar a `mcp.env`)
-- **`setup.ps1`** — Instalador completo para Windows
+---
+
+## Contenido del repo
+
+| Archivo/Carpeta | Para qué sirve |
+|---|---|
+| `CLAUDE.md` | Reglas siempre activas + auto-activación de skills |
+| `projects-registry.md` | Aliases de proyectos, Jira keys y workspaces |
+| `commands/*.md` | 26 skills (`/angular`, `/nestjs`, `/dotnet`, `/swagger`, etc.) |
+| `memory/*.md` | Memoria persistente por cliente (6 clientes, 58 proyectos) |
+| `mcp-config.json` | Referencia de MCPs locales configurados |
+| `mcp.env.example` | Plantilla de tokens y conexiones (copiar a `mcp.env`) |
+| `setup.ps1` | Instalador — detecta Claude Code y/o Codex automáticamente |
+| `mcp-secrets-guide.md` | Dónde obtener cada token |
 
 ---
 
 ## Instalación en nuevo dispositivo
 
-### 1. Clonar el repo
+### Paso 1 — Clonar el repo
 
 ```powershell
 git clone https://github.com/NaiDevs/claude-config.git "$env:USERPROFILE\.claude\claude-config"
 cd "$env:USERPROFILE\.claude\claude-config"
 ```
 
-### 2. Crear y llenar `mcp.env`
+### Paso 2 — Crear `mcp.env` con los tokens y conexiones
 
 ```powershell
 Copy-Item mcp.env.example mcp.env
-# Editar mcp.env con los valores reales (ver sección de tokens más abajo)
-notepad mcp.env
+notepad mcp.env   # llenar con los valores reales
 ```
 
-### 3. Correr el instalador
+Estructura del archivo (ver detalle más abajo):
+```env
+LABODEGA_DEV=postgresql://postgres:password@localhost:5432/labodega_dev
+YALO_DEV=postgresql://postgres:password@localhost:5432/yalo_dev
+CORINSA_DEV=postgresql://postgres:password@localhost:5432/corinsa_dev
+ULTIMATELABS_DEV=postgresql://postgres:password@localhost:5432/ultimatelabs_dev
+EMSULA_DEV=postgresql://postgres:password@localhost:5432/emsula_dev
+CORINSA_SS=Server=localhost,1433;Database=corinsa;User Id=sa;Password=password;TrustServerCertificate=True
+EMSULA_SS=Server=localhost,1433;Database=emsula;User Id=sa;Password=password;TrustServerCertificate=True
+YALO_SS=Server=localhost,1433;Database=yalo;User Id=sa;Password=password;TrustServerCertificate=True
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_token_here
+```
+
+### Paso 3 — Correr el instalador
+
+El script detecta automáticamente qué herramientas tienes instaladas:
 
 ```powershell
 .\setup.ps1
 ```
 
-El script instala automáticamente: commands, memoria, registry, CLAUDE.md, MCPs y carga las variables de `mcp.env` como env vars del sistema.
+O forzar una herramienta específica:
 
-### 4. Reiniciar Claude Code
+```powershell
+.\setup.ps1 -Tool claude   # solo Claude Code
+.\setup.ps1 -Tool codex    # solo Codex
+.\setup.ps1 -Tool both     # Claude Code + Codex
+```
 
-Los MCPs y skills quedan disponibles en la siguiente sesión.
+Con un path de proyectos diferente:
+```powershell
+.\setup.ps1 -ProjectsRoot "D:\MisProyectos"
+```
+
+### Paso 4 — Reiniciar la herramienta
+
+Cerrar y reabrir Claude Code y/o Codex. Los skills, MCPs y memoria quedan disponibles automáticamente.
 
 ---
 
-## Tokens y conexiones (`mcp.env`)
+## Qué instala el script por herramienta
 
-El archivo `mcp.env` **nunca se sube al repo** (está en `.gitignore`). Cópialo desde `mcp.env.example` y llena los valores reales.
+### Claude Code (`~/.claude/`)
+
+| Qué | Dónde queda |
+|---|---|
+| 26 skills | `~/.claude/commands/*.md` |
+| Reglas globales | `~/.claude/CLAUDE.md` |
+| Registry de proyectos | `~/.claude/projects-registry.md` |
+| Memoria (6 clientes) | `~/.claude/projects/.../memory/*.md` |
+| MCPs (DBs, GitHub, filesystem) | `~/.claude/settings.json` → `mcpServers` |
+| Permiso de escritura | `~/.claude/settings.json` → `permissions.allow` |
+
+### Codex (`~/.codex/`)
+
+| Qué | Dónde queda |
+|---|---|
+| 26 skills | `~/.codex/skills/<nombre>/SKILL.md` |
+| Reglas globales | Agrega a `~/.codex/engram-instructions.md` (sin sobreescribir) |
+| MCPs (DBs, GitHub, filesystem) | `~/.codex/config.toml` → `[mcp_servers.*]` |
+
+### Compartido (ambas herramientas)
+
+- Los tokens del `mcp.env` se cargan como **variables de entorno del sistema** — ambas herramientas los leen automáticamente
+- Si **engram** está instalado, ambas comparten la misma memoria
+
+---
+
+## Tokens y conexiones de bases de datos
+
+El archivo `mcp.env` **nunca se sube al repo** (está en `.gitignore`).
 
 ### GitHub Token — `GITHUB_PERSONAL_ACCESS_TOKEN`
 
@@ -58,95 +118,85 @@ El archivo `mcp.env` **nunca se sube al repo** (está en `.gitignore`). Cópialo
 
 ### PostgreSQL — una variable por proyecto
 
-Formato: `postgresql://usuario:password@host:puerto/nombre_db`
+```
+Formato: postgresql://usuario:password@host:puerto/nombre_db
+```
 
 ```env
 LABODEGA_DEV=postgresql://postgres:password@localhost:5432/labodega_dev
 YALO_DEV=postgresql://postgres:password@localhost:5432/yalo_dev
 CORINSA_DEV=postgresql://postgres:password@localhost:5432/corinsa_dev
+ULTIMATELABS_DEV=postgresql://postgres:password@localhost:5432/ultimatelabs_dev
+EMSULA_DEV=postgresql://postgres:password@localhost:5432/emsula_dev
 ```
 
 ### SQL Server — una variable por proyecto
 
-Formato: `Server=host,puerto;Database=nombre;User Id=usuario;Password=pass;TrustServerCertificate=True`
+```
+Formato: Server=host,puerto;Database=nombre;User Id=usuario;Password=pass;TrustServerCertificate=True
+```
 
 ```env
 CORINSA_SS=Server=localhost,1433;Database=corinsa;User Id=sa;Password=pass;TrustServerCertificate=True
 EMSULA_SS=Server=localhost,1433;Database=emsula;User Id=sa;Password=pass;TrustServerCertificate=True
+YALO_SS=Server=localhost,1433;Database=yalo;User Id=sa;Password=pass;TrustServerCertificate=True
 ```
 
 ---
 
 ## Agregar una base de datos nueva
 
-### Paso 1 — Agregar la variable en `mcp.env`
-
+**Paso 1** — Agregar la variable en `mcp.env`:
 ```env
-# Ejemplo: nueva DB de Ultimate Labs
-ULTIMATELABS_PROD=postgresql://postgres:password@prod.server.com:5432/ultimatelabs
+NUEVO_PROYECTO_DEV=postgresql://postgres:password@localhost:5432/nuevo_db
 ```
 
-### Paso 2 — Agregar el MCP en `settings.json`
+**Paso 2** — Agregar en `mcp-config.json` (referencia del repo) y correr `.\setup.ps1` de nuevo.
 
-Abrir `~/.claude/settings.json` y agregar una entrada en `mcpServers`:
+O agregar manualmente:
 
-**PostgreSQL:**
+- **Claude Code** — en `~/.claude/settings.json`, sección `mcpServers`:
 ```json
-"pg-ultimatelabs-prod": {
+"pg-nuevo": {
   "command": "powershell",
-  "args": ["-Command", "npx -y mcp-server-postgres $env:ULTIMATELABS_PROD"]
+  "args": ["-Command", "npx -y mcp-server-postgres $env:NUEVO_PROYECTO_DEV"]
 }
 ```
 
-**SQL Server:**
-```json
-"ss-nuevo-proyecto": {
-  "command": "powershell",
-  "args": ["-Command", "npx -y mssql-mcp $env:NUEVO_PROYECTO_SS"]
-}
+- **Codex** — en `~/.codex/config.toml`:
+```toml
+[mcp_servers.pg-nuevo]
+command = "powershell"
+args = ["-Command", "npx -y mcp-server-postgres $env:NUEVO_PROYECTO_DEV"]
 ```
 
-### Paso 3 — Recargar Claude Code
-
-Cerrar y reabrir Claude Code. El nuevo MCP aparece automáticamente.
-
-### Paso 4 — Actualizar el repo (para sincronizar con otros dispositivos)
-
-```powershell
-# Agregar también la variable en mcp.env.example (sin el valor real)
-# Agregar la entrada en mcp-config.json
-
-cd "$env:USERPROFILE\.claude\claude-config"
-git add mcp.env.example mcp-config.json
-git commit -m "feat: agrega MCP para NuevoDB"
-git push
-```
-
-> En el otro dispositivo: `git pull && .\setup.ps1` — el script lee `mcp.env` y configura automáticamente.
+Reiniciar la herramienta después de cada cambio.
 
 ---
 
 ## MCPs locales configurados
 
-| MCP | Para qué sirve |
-|---|---|
-| **github** | Buscar código en repos, PRs, issues sin salir de Claude |
-| **filesystem** | Acceso a todos los proyectos en `Proyectos/` sin hacer cd |
-| **memory** | Knowledge graph complementario al sistema de memoria |
-| **pg-labodega** | PostgreSQL — La Bodega (dev) |
-| **pg-yalo** | PostgreSQL — YALO (dev) |
-| **pg-corinsa** | PostgreSQL — CORINSA (dev) |
-| **pg-ultimatelabs** | PostgreSQL — Ultimate Labs (dev) |
-| **pg-emsula** | PostgreSQL — EMSULA (dev) |
-| **ss-corinsa** | SQL Server — CORINSA legacy |
-| **ss-emsula** | SQL Server — EMSULA Doctor legacy |
-| **ss-yalo** | SQL Server — YALO legacy |
+| MCP | Para qué sirve | Claude Code | Codex |
+|---|---|---|---|
+| **github** | Buscar código en repos, PRs, issues | ✅ | ✅ |
+| **filesystem** | Acceso a todos los proyectos sin cd | ✅ | ✅ |
+| **memory** | Knowledge graph complementario | ✅ | ✅ |
+| **pg-labodega** | PostgreSQL — La Bodega | ✅ | ✅ |
+| **pg-yalo** | PostgreSQL — YALO | ✅ | ✅ |
+| **pg-corinsa** | PostgreSQL — CORINSA | ✅ | ✅ |
+| **pg-ultimatelabs** | PostgreSQL — Ultimate Labs | ✅ | ✅ |
+| **pg-emsula** | PostgreSQL — EMSULA | ✅ | ✅ |
+| **ss-corinsa** | SQL Server — CORINSA legacy | ✅ | ✅ |
+| **ss-emsula** | SQL Server — EMSULA Doctor legacy | ✅ | ✅ |
+| **ss-yalo** | SQL Server — YALO legacy | ✅ | ✅ |
 
-> Los MCPs cloud (Jira, Slack, Microsoft 365, Figma) se conectan por cuenta de claude.ai — no requieren configuración aquí.
+> Los MCPs cloud (Jira, Slack, Microsoft 365, Figma) van por cuenta de claude.ai — no requieren configuración aquí.
 
 ---
 
 ## Skills disponibles (`/comando`)
+
+Los skills se activan **automáticamente por contexto** — no siempre es necesario escribir el comando. Claude/Codex detecta la tecnología y activa el skill correspondiente.
 
 | Skill | Para qué |
 |---|---|
@@ -156,8 +206,8 @@ git push
 | `/pr` | Crear Pull Requests descriptivos |
 | `/jira` | Crear epics, historias y tareas en Jira |
 | `/notify` | Notificar cambios a compañeros por Slack |
-| `/angular` | Generar componentes, servicios, guards Angular |
-| `/material` | Tablas, dialogs, formularios con Angular Material |
+| `/angular` | Componentes, servicios, guards Angular |
+| `/material` | Tablas, dialogs, formularios Angular Material |
 | `/tailwind` | Layouts, componentes, temas Tailwind CSS |
 | `/nestjs` | Módulos, controllers, DTOs, guards NestJS |
 | `/dotnet` | Endpoints, DTOs, migrations .NET |
@@ -177,29 +227,30 @@ git push
 | `/linting` | ESLint, Prettier, TSLint |
 | `/docs` | PDFs con QuestPDF, Excel con ClosedXML/ExcelJS |
 
-> Los skills se activan automáticamente por contexto — no siempre es necesario escribir el comando.
-
 ---
 
 ## Actualizar en otro dispositivo
 
 ```powershell
 git -C "$env:USERPROFILE\.claude\claude-config" pull
+cd "$env:USERPROFILE\.claude\claude-config"
 .\setup.ps1
-# Reiniciar Claude Code
+# Reiniciar Claude Code y/o Codex
 ```
 
 ## Editar aliases o workspaces
 
 ```powershell
+# Editar la fuente de verdad
 code "$env:USERPROFILE\.claude\projects-registry.md"
 
+# Sincronizar al repo
 git -C "$env:USERPROFILE\.claude\claude-config" add projects-registry.md
 git -C "$env:USERPROFILE\.claude\claude-config" commit -m "update aliases"
 git -C "$env:USERPROFILE\.claude\claude-config" push
 ```
 
-## Estructura de aliases
+## Estructura de aliases de proyectos
 
 | Prefijo | Cliente |
 |---|---|
