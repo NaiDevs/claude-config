@@ -1,4 +1,4 @@
-# setup.ps1 — Instalar claude-config en este dispositivo
+﻿# setup.ps1 — Instalar claude-config en este dispositivo
 # Detecta automáticamente Claude Code y/o Codex e instala en ambos
 #
 # Uso:
@@ -221,26 +221,25 @@ interface:
     Write-Host "  OK → $skillCount skills + openai.yaml instalados en ~/.codex/skills/" -ForegroundColor Green
 
     # Instructions (equivalente a CLAUDE.md) — adaptar sintaxis /cmd → $cmd para Codex
+    # IMPORTANTE: usar [System.IO.File]::ReadAllText con UTF-8 explícito para respetar tildes y ñ
     $instrFile     = "$CodexHome\engram-instructions.md"
     $marker        = "<!-- nai-rules-start -->"
-    $instrExisting = if (Test-Path $instrFile) { Get-Content $instrFile -Raw } else { "" }
+    $instrExisting = if (Test-Path $instrFile) {
+        [System.IO.File]::ReadAllText($instrFile, [System.Text.Encoding]::UTF8)
+    } else { "" }
+
+    $claudeContent = [System.IO.File]::ReadAllText("$ScriptDir\CLAUDE.md", [System.Text.Encoding]::UTF8)
+    $codexContent  = $claudeContent -replace '`/([a-z\-]+)`', '`$$1`'
+    $newBlock      = "$marker`n$codexContent`n<!-- nai-rules-end -->"
+
     if ($instrExisting -notmatch [regex]::Escape($marker)) {
-        # Leer CLAUDE.md y adaptar sintaxis de skills para Codex
-        $claudeContent = Get-Content "$ScriptDir\CLAUDE.md" -Raw
-        # Reemplazar `/skill` → `$skill` en la tabla de auto-activación
-        $codexContent  = $claudeContent -replace '`/([a-z\-]+)`', '`$$1`'
-        $naiRules = "`n`n$marker`n$codexContent`n<!-- nai-rules-end -->"
-        Add-Content $instrFile $naiRules -Encoding utf8
-        Write-Host "  OK → Reglas agregadas a engram-instructions.md (sintaxis `$skill adaptada)" -ForegroundColor Green
+        $instrExisting += "`n`n$newBlock"
     } else {
-        # Actualizar si ya existe (re-generar con la versión actual)
-        $claudeContent = Get-Content "$ScriptDir\CLAUDE.md" -Raw
-        $codexContent  = $claudeContent -replace '`/([a-z\-]+)`', '`$$1`'
-        $newBlock      = "$marker`n$codexContent`n<!-- nai-rules-end -->"
-        $updated       = $instrExisting -replace "(?s)$([regex]::Escape($marker)).*?<!-- nai-rules-end -->", $newBlock
-        $updated | Set-Content $instrFile -Encoding utf8
-        Write-Host "  OK → engram-instructions.md actualizado" -ForegroundColor Green
+        $instrExisting = $instrExisting -replace "(?s)$([regex]::Escape($marker)).*?<!-- nai-rules-end -->", $newBlock
     }
+
+    [System.IO.File]::WriteAllText($instrFile, $instrExisting, [System.Text.Encoding]::UTF8)
+    Write-Host "  OK → engram-instructions.md actualizado (UTF-8 correcto)" -ForegroundColor Green
 
     # MCPs en config.toml — agregar secciones de DB si no existen
     Write-Host "  Configurando MCPs en config.toml..." -ForegroundColor Yellow
