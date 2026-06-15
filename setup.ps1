@@ -1,163 +1,268 @@
 # setup.ps1 — Instalar claude-config en este dispositivo
-# Uso: .\setup.ps1
-# Uso con path personalizado: .\setup.ps1 -ProjectsRoot "D:\MisProyectos"
+# Detecta automáticamente Claude Code y/o Codex e instala en ambos
+#
+# Uso:
+#   .\setup.ps1                          → auto-detecta herramientas
+#   .\setup.ps1 -Tool claude             → solo Claude Code
+#   .\setup.ps1 -Tool codex              → solo Codex
+#   .\setup.ps1 -Tool both               → ambos
+#   .\setup.ps1 -ProjectsRoot "D:\Proyectos"
+
 param(
-    [string]$ProjectsRoot = "$env:USERPROFILE\OneDrive\Documentos\Proyectos"
+    [string]$ProjectsRoot = "$env:USERPROFILE\OneDrive\Documentos\Proyectos",
+    [ValidateSet("auto","claude","codex","both")]
+    [string]$Tool = "auto"
 )
 
-$ClaudeHome = "$env:USERPROFILE\.claude"
-$ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ErrorActionPreference = "Stop"
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ClaudeHome   = "$env:USERPROFILE\.claude"
+$CodexHome    = "$env:USERPROFILE\.codex"
+$Username     = $env:USERNAME
 
-Write-Host "=== Instalando claude-config ===" -ForegroundColor Cyan
-Write-Host "Usuario:       $env:USERNAME"
-Write-Host "Claude home:   $ClaudeHome"
-Write-Host "Proyectos:     $ProjectsRoot"
+Write-Host ""
+Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║      claude-config — Setup           ║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "Usuario:    $Username"
+Write-Host "Proyectos:  $ProjectsRoot"
 Write-Host ""
 
-# 0. Leer mcp.env si existe y cargar variables de entorno del sistema
+# ─────────────────────────────────────────────────────────────────────────────
+# FASE 0 — Leer mcp.env y cargar env vars
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host "[ 0 ] Cargando tokens desde mcp.env..." -ForegroundColor Yellow
 $EnvFile = "$ScriptDir\mcp.env"
 if (Test-Path $EnvFile) {
-    Write-Host "0. Cargando tokens desde mcp.env..." -ForegroundColor Yellow
     $loaded = 0
     Get-Content $EnvFile | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '=' } | ForEach-Object {
         $parts = $_ -split '=', 2
         $key   = $parts[0].Trim()
         $value = $parts[1].Trim()
-        if ($key -and $value -notmatch 'your_|_here$') {
+        if ($key -and $value -notmatch 'your_|_here$|password$') {
             [System.Environment]::SetEnvironmentVariable($key, $value, "User")
             $loaded++
         }
     }
-    Write-Host "   OK -> $loaded variable(s) cargadas como env vars del sistema" -ForegroundColor Green
+    Write-Host "     OK → $loaded variable(s) cargadas" -ForegroundColor Green
 } else {
-    Write-Host "0. mcp.env no encontrado — copialo desde mcp.env.example y llena los valores" -ForegroundColor DarkYellow
-    Write-Host "   cp $ScriptDir\mcp.env.example $ScriptDir\mcp.env"
+    Write-Host "     mcp.env no encontrado — copia mcp.env.example → mcp.env y llena los valores" -ForegroundColor DarkYellow
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FASE 1 — Detectar herramientas instaladas
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "[ 1 ] Detectando herramientas instaladas..." -ForegroundColor Yellow
+
+$hasClaude = (Test-Path $ClaudeHome) -or (Get-Command claude -ErrorAction SilentlyContinue)
+$hasCodex  = (Test-Path $CodexHome)  -or (Get-Command codex  -ErrorAction SilentlyContinue)
+$hasEngram = [bool](Get-Command engram -ErrorAction SilentlyContinue)
+
+if ($Tool -eq "auto") {
+    $installClaude = $hasClaude
+    $installCodex  = $hasCodex
+} else {
+    $installClaude = ($Tool -eq "claude" -or $Tool -eq "both")
+    $installCodex  = ($Tool -eq "codex"  -or $Tool -eq "both")
+}
+
+Write-Host "     Claude Code : $(if ($hasClaude) { '✓ detectado' } else { '✗ no encontrado' })"
+Write-Host "     Codex       : $(if ($hasCodex)  { '✓ detectado' } else { '✗ no encontrado' })"
+Write-Host "     Engram      : $(if ($hasEngram) { '✓ detectado' } else { '✗ no encontrado' })"
+Write-Host ""
+Write-Host "     Instalar en: $(if ($installClaude -and $installCodex) { 'Claude Code + Codex' } elseif ($installClaude) { 'Claude Code' } elseif ($installCodex) { 'Codex' } else { 'ninguno detectado — usa -Tool claude|codex|both' })" -ForegroundColor Cyan
+
+if (-not $installClaude -and -not $installCodex) {
     Write-Host ""
+    Write-Host "No se detectó ninguna herramienta. Usa -Tool claude, -Tool codex o -Tool both" -ForegroundColor Red
+    exit 1
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FASE 2 — Instalar en CLAUDE CODE
+# ─────────────────────────────────────────────────────────────────────────────
+if ($installClaude) {
+    Write-Host ""
+    Write-Host "┌─ Claude Code ───────────────────────────────┐" -ForegroundColor Blue
+    New-Item -ItemType Directory -Force $ClaudeHome | Out-Null
 
-# 1. Comandos custom — instalar en commands/ (ubicación correcta de Claude Code)
-Write-Host "1. Instalando comandos custom..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force "$ClaudeHome\commands" | Out-Null
-Copy-Item "$ScriptDir\commands\*.md" "$ClaudeHome\commands\" -Force
-Write-Host "   OK -> $((Get-ChildItem "$ScriptDir\commands\*.md").Count) comandos instalados en $ClaudeHome\commands\" -ForegroundColor Green
+    # Commands (skills)
+    Write-Host "  Instalando commands..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Force "$ClaudeHome\commands" | Out-Null
+    Copy-Item "$ScriptDir\commands\*.md" "$ClaudeHome\commands\" -Force
+    # Limpiar skills/ obsoleta
+    Get-ChildItem "$ClaudeHome\skills" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  OK → $((Get-ChildItem "$ScriptDir\commands\*.md").Count) commands" -ForegroundColor Green
 
-# Limpiar ~/.claude/skills/ si tiene archivos viejos (skills/ era la ubicación incorrecta)
-$skillsPath = "$ClaudeHome\skills"
-if (Test-Path $skillsPath) {
-    $oldFiles = Get-ChildItem $skillsPath -ErrorAction SilentlyContinue
-    if ($oldFiles.Count -gt 0) {
-        $oldFiles | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "   OK -> $($oldFiles.Count) archivo(s) eliminado(s) de skills/ (ubicación obsoleta)" -ForegroundColor DarkYellow
+    # CLAUDE.md global
+    Copy-Item "$ScriptDir\CLAUDE.md" "$ClaudeHome\CLAUDE.md" -Force
+    Write-Host "  OK → CLAUDE.md" -ForegroundColor Green
+
+    # Registry de proyectos
+    Copy-Item "$ScriptDir\projects-registry.md" "$ClaudeHome\projects-registry.md" -Force
+    Write-Host "  OK → projects-registry.md" -ForegroundColor Green
+
+    # Memoria (engram)
+    $EncodedHome = $env:USERPROFILE -replace "^([A-Za-z]):\\", '$1--' -replace "\\", "-"
+    $MemoryPath  = "$ClaudeHome\projects\$EncodedHome\memory"
+    New-Item -ItemType Directory -Force $MemoryPath | Out-Null
+    Copy-Item "$ScriptDir\memory\*.md" "$MemoryPath\" -Force
+    Write-Host "  OK → $((Get-ChildItem "$ScriptDir\memory\*.md").Count) archivos de memoria" -ForegroundColor Green
+
+    # MEMORY.md
+    $MemIdx    = "$MemoryPath\MEMORY.md"
+    $Entries   = @(
+        "- [Token economy + modelos](feedback-token-economy.md) — Haiku para git ops, Sonnet default, Opus solo con consulta previa",
+        "- [Perfil de usuario](user-profile.md) — Naidelyn, dev full-stack, 6 clientes, 58 repos",
+        "- [Log de cambios](changes-log.md) — historial de commits y PRs por proyecto",
+        "- [Jira cithn.atlassian.net](reference-jira.md) — cloudId + mapping alias→key",
+        "- [Config claude-config](setup-claude-config.md) — Repo portable de configuración",
+        "- [Proyectos YALO](projects-yalo.md) — 22 subproyectos POS/pagos, aliases ``yalo *``",
+        "- [Proyectos La Bodega](projects-labodega.md) — 10 subproyectos ecommerce, aliases ``bodega *``",
+        "- [Proyectos CORINSA](projects-corinsa.md) — 7 subproyectos BI/CPA, aliases ``corinsa *`` y ``cpa *``",
+        "- [Proyectos Ultimate Labs](projects-ultimatelabs.md) — 6 subproyectos labs, aliases ``ult *``",
+        "- [Proyectos EMSULA + NAI](projects-otros.md) — 12 subproyectos médicos y personales",
+        "- [Workspaces](projects-workspaces.md) — Grupos de repos para trabajo simultáneo con git sync"
+    )
+    $existing = if (Test-Path $MemIdx) { Get-Content $MemIdx } else { @() }
+    $toAdd    = $Entries | Where-Object { $existing -notcontains $_ }
+    if (-not (Test-Path $MemIdx)) { "# Memory Index" | Set-Content $MemIdx -Encoding utf8 }
+    if ($toAdd) { $toAdd -join "`n" | Add-Content $MemIdx -Encoding utf8 }
+    Write-Host "  OK → MEMORY.md actualizado" -ForegroundColor Green
+
+    # NPM packages de MCPs
+    Write-Host "  Instalando paquetes MCP..." -ForegroundColor Yellow
+    npm install -g @modelcontextprotocol/server-github @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-memory mcp-server-postgres mssql-mcp --silent 2>$null
+    Write-Host "  OK → paquetes MCP instalados" -ForegroundColor Green
+
+    # settings.json — MCPs + permiso Write
+    $SettingsPath = "$ClaudeHome\settings.json"
+    if (Test-Path $SettingsPath) {
+        $cfg = Get-Content $SettingsPath -Raw | ConvertFrom-Json
+    } else {
+        $cfg = [PSCustomObject]@{ permissions = [PSCustomObject]@{ defaultMode = "dontAsk"; allow = @() } }
     }
-}
-
-# 2. CLAUDE.md global — reglas siempre activas + auto-activación de skills
-Write-Host "2. Instalando CLAUDE.md global..." -ForegroundColor Yellow
-Copy-Item "$ScriptDir\CLAUDE.md" "$ClaudeHome\CLAUDE.md" -Force
-Write-Host "   OK -> $ClaudeHome\CLAUDE.md" -ForegroundColor Green
-
-# 3. Registry editable
-Write-Host "2. Copiando registry de proyectos..." -ForegroundColor Yellow
-Copy-Item "$ScriptDir\projects-registry.md" "$ClaudeHome\projects-registry.md" -Force
-Write-Host "   OK -> $ClaudeHome\projects-registry.md" -ForegroundColor Green
-Write-Host "   (edita este archivo para cambiar aliases y workspaces)"
-
-# 3. Detectar path de memoria de Claude Code
-# Claude Code codifica el homepath: C:\Users\naide -> C--Users-naide
-Write-Host "3. Detectando path de memoria..." -ForegroundColor Yellow
-$HomePath = $env:USERPROFILE
-$EncodedHome = $HomePath -replace "^([A-Za-z]):\\", '$1--' -replace "\\", "-"
-$MemoryPath = "$ClaudeHome\projects\$EncodedHome\memory"
-New-Item -ItemType Directory -Force $MemoryPath | Out-Null
-Write-Host "   Path codificado: $EncodedHome"
-Write-Host "   Memoria en:      $MemoryPath"
-
-# 4. Copiar archivos de memoria
-Write-Host "4. Instalando archivos de memoria..." -ForegroundColor Yellow
-Copy-Item "$ScriptDir\memory\*.md" "$MemoryPath\" -Force
-Write-Host "   OK -> $((Get-ChildItem "$ScriptDir\memory\*.md").Count) archivos copiados" -ForegroundColor Green
-
-# 5. Actualizar MEMORY.md (sin duplicar entradas)
-Write-Host "5. Actualizando MEMORY.md..." -ForegroundColor Yellow
-$MemoryIndex = "$MemoryPath\MEMORY.md"
-$NewEntries = @(
-    "- [Proyectos YALO](projects-yalo.md) — 22 subproyectos POS/pagos, aliases ``yalo *``",
-    "- [Proyectos La Bodega](projects-labodega.md) — 10 subproyectos ecommerce, aliases ``bodega *``",
-    "- [Proyectos CORINSA](projects-corinsa.md) — 7 subproyectos BI/CPA, aliases ``corinsa *`` y ``cpa *``",
-    "- [Proyectos Ultimate Labs](projects-ultimatelabs.md) — 6 subproyectos labs, aliases ``ult *``",
-    "- [Proyectos EMSULA + NAI](projects-otros.md) — 12 subproyectos médicos y personales",
-    "- [Workspaces](projects-workspaces.md) — Grupos de repos para trabajo simultáneo con git sync"
-)
-
-$existing = if (Test-Path $MemoryIndex) { Get-Content $MemoryIndex } else { @() }
-$toAdd = $NewEntries | Where-Object { $existing -notcontains $_ }
-if ($toAdd.Count -gt 0) {
-    if (-not (Test-Path $MemoryIndex)) {
-        "# Memory Index" | Set-Content $MemoryIndex -Encoding utf8
+    $writePermission = "Write($SettingsPath)"
+    if ($cfg.permissions.allow -notcontains $writePermission) {
+        $cfg.permissions.allow += $writePermission
     }
-    $toAdd -join "`n" | Add-Content $MemoryIndex -Encoding utf8
-    Write-Host "   OK -> $($toAdd.Count) entradas agregadas a MEMORY.md" -ForegroundColor Green
+    if (-not $cfg.PSObject.Properties['mcpServers']) {
+        $proyectosPath = ($ProjectsRoot -replace '\\','/')
+        $claudePathFwd = ($ClaudeHome -replace '\\','/')
+        $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([PSCustomObject]@{
+            github          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-github"); shell="powershell" }
+            filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,$claudePathFwd); shell="powershell" }
+            memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
+            "pg-labodega"   = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:LABODEGA_DEV") }
+            "pg-yalo"       = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:YALO_DEV") }
+            "pg-corinsa"    = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:CORINSA_DEV") }
+            "pg-ultimatelabs" = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:ULTIMATELABS_DEV") }
+            "pg-emsula"     = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:EMSULA_DEV") }
+            "ss-corinsa"    = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:CORINSA_SS") }
+            "ss-emsula"     = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:EMSULA_SS") }
+            "ss-yalo"       = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:YALO_SS") }
+        }) -Force
+        if ($hasEngram) {
+            $cfg.mcpServers | Add-Member -NotePropertyName engram -NotePropertyValue ([PSCustomObject]@{ command="engram"; args=@("mcp") }) -Force
+        }
+        $cfg | ConvertTo-Json -Depth 10 | Set-Content $SettingsPath -Encoding utf8
+        Write-Host "  OK → settings.json con MCPs configurados" -ForegroundColor Green
+    } else {
+        Write-Host "  OK → settings.json ya tenía MCPs" -ForegroundColor Green
+    }
+    Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Blue
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FASE 3 — Instalar en CODEX
+# ─────────────────────────────────────────────────────────────────────────────
+if ($installCodex) {
+    Write-Host ""
+    Write-Host "┌─ Codex ─────────────────────────────────────┐" -ForegroundColor Magenta
+    New-Item -ItemType Directory -Force $CodexHome | Out-Null
+
+    # Skills — convertir commands/*.md → ~/.codex/skills/<name>/SKILL.md
+    Write-Host "  Instalando skills..." -ForegroundColor Yellow
+    $skillCount = 0
+    Get-ChildItem "$ScriptDir\commands\*.md" | ForEach-Object {
+        $skillName = $_.BaseName
+        $skillDir  = "$CodexHome\skills\$skillName"
+        New-Item -ItemType Directory -Force $skillDir | Out-Null
+        Copy-Item $_.FullName "$skillDir\SKILL.md" -Force
+        $skillCount++
+    }
+    Write-Host "  OK → $skillCount skills instalados en ~/.codex/skills/" -ForegroundColor Green
+
+    # Instructions (equivalente a CLAUDE.md)
+    $instrFile = "$CodexHome\engram-instructions.md"
+    $marker    = "<!-- nai-rules-start -->"
+    $instrExisting = if (Test-Path $instrFile) { Get-Content $instrFile -Raw } else { "" }
+    if ($instrExisting -notmatch [regex]::Escape($marker)) {
+        $naiRules = "`n`n$marker`n" + (Get-Content "$ScriptDir\CLAUDE.md" -Raw) + "`n<!-- nai-rules-end -->"
+        Add-Content $instrFile $naiRules -Encoding utf8
+        Write-Host "  OK → Reglas agregadas a engram-instructions.md" -ForegroundColor Green
+    } else {
+        Write-Host "  OK → engram-instructions.md ya tenía las reglas" -ForegroundColor Green
+    }
+
+    # MCPs en config.toml — agregar secciones de DB si no existen
+    Write-Host "  Configurando MCPs en config.toml..." -ForegroundColor Yellow
+    $configPath = "$CodexHome\config.toml"
+    $configRaw  = if (Test-Path $configPath) { Get-Content $configPath -Raw } else { "" }
+
+    $mcpEntries = @{
+        "github"          = "command = `"npx`"`nargs = [`"-y`", `"@modelcontextprotocol/server-github`"]"
+        "filesystem"      = "command = `"npx`"`nargs = [`"-y`", `"@modelcontextprotocol/server-filesystem`", `"$($ProjectsRoot -replace '\\','/')`", `"$($CodexHome -replace '\\','/')`"]"
+        "pg-labodega"     = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mcp-server-postgres `$env:LABODEGA_DEV`"]"
+        "pg-yalo"         = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mcp-server-postgres `$env:YALO_DEV`"]"
+        "pg-corinsa"      = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mcp-server-postgres `$env:CORINSA_DEV`"]"
+        "pg-ultimatelabs" = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mcp-server-postgres `$env:ULTIMATELABS_DEV`"]"
+        "pg-emsula"       = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mcp-server-postgres `$env:EMSULA_DEV`"]"
+        "ss-corinsa"      = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mssql-mcp `$env:CORINSA_SS`"]"
+        "ss-emsula"       = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mssql-mcp `$env:EMSULA_SS`"]"
+        "ss-yalo"         = "command = `"powershell`"`nargs = [`"-Command`", `"npx -y mssql-mcp `$env:YALO_SS`"]"
+    }
+
+    $addedCount = 0
+    foreach ($name in $mcpEntries.Keys) {
+        $section = "[mcp_servers.$name]"
+        if ($configRaw -notmatch [regex]::Escape($section)) {
+            $configRaw += "`n`n$section`n$($mcpEntries[$name])"
+            $addedCount++
+        }
+    }
+    $configRaw | Set-Content $configPath -Encoding utf8
+    Write-Host "  OK → $addedCount MCP(s) agregados a config.toml" -ForegroundColor Green
+
+    Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Magenta
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FASE 4 — Engram compartido (si está disponible)
+# ─────────────────────────────────────────────────────────────────────────────
+if ($hasEngram -and $installClaude -and $installCodex) {
+    Write-Host ""
+    Write-Host "[ 4 ] Engram detectado — memoria compartida entre Claude Code y Codex ✓" -ForegroundColor Green
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RESUMEN
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║      Instalación completa ✓          ║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host ""
+if ($installClaude) { Write-Host "  Claude Code → ~/.claude/commands/ | ~/.claude/settings.json" -ForegroundColor Blue }
+if ($installCodex)  { Write-Host "  Codex       → ~/.codex/skills/    | ~/.codex/config.toml"    -ForegroundColor Magenta }
+Write-Host ""
+Write-Host "  Próximos pasos:"
+if (-not (Test-Path "$ScriptDir\mcp.env")) {
+    Write-Host "  1. Copia mcp.env.example → mcp.env y llena los tokens/conexiones" -ForegroundColor Yellow
+    Write-Host "  2. Vuelve a correr .\setup.ps1"
+    Write-Host "  3. Reinicia Claude Code / Codex"
 } else {
-    Write-Host "   OK -> MEMORY.md ya estaba actualizado" -ForegroundColor Green
+    Write-Host "  1. Reinicia Claude Code y/o Codex"
+    Write-Host "  2. Usa /proyecto para ver todos los proyectos"
 }
-
-# 6. MCPs locales — instalar paquetes npm
-Write-Host "6. Instalando paquetes de MCPs locales..." -ForegroundColor Yellow
-npm install -g @modelcontextprotocol/server-github @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-memory mcp-server-postgres brave-search-mcp --silent 2>$null
-Write-Host "   OK -> paquetes MCP instalados globalmente" -ForegroundColor Green
-
-# 7. MCPs — agregar a settings.json
-Write-Host "7. Configurando MCPs en settings.json..." -ForegroundColor Yellow
-$SettingsPath = "$ClaudeHome\settings.json"
-$username = $env:USERNAME
-$proyectosPath = "C:/Users/$username/OneDrive/Documentos/Proyectos"
-$claudePath    = "C:/Users/$username/.claude"
-
-if (Test-Path $SettingsPath) {
-    $settings = Get-Content $SettingsPath -Raw | ConvertFrom-Json
-} else {
-    $settings = [PSCustomObject]@{}
-}
-
-# Agregar permiso Write para settings.json si no existe
-$writePermission = "Write($SettingsPath)"
-if (-not ($settings.permissions.allow -contains $writePermission)) {
-    $settings.permissions.allow += $writePermission
-}
-
-# Agregar mcpServers si no existe ya
-if (-not $settings.PSObject.Properties['mcpServers']) {
-    $settings | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([PSCustomObject]@{
-        github          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-github"); shell="powershell" }
-        postgres        = [PSCustomObject]@{ command="npx"; args=@("-y","mcp-server-postgres"); shell="powershell" }
-        filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,$claudePath); shell="powershell" }
-        "brave-search"  = [PSCustomObject]@{ command="npx"; args=@("-y","brave-search-mcp"); shell="powershell" }
-        memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
-    }) -Force
-    $settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsPath -Encoding utf8
-    Write-Host "   OK -> MCPs configurados en settings.json" -ForegroundColor Green
-} else {
-    Write-Host "   OK -> MCPs ya estaban configurados" -ForegroundColor Green
-}
-
-# 8. Hook de git fetch (mostrar fragmento para agregar manualmente)
-Write-Host ""
-Write-Host "8. Hook de git fetch (opcional)" -ForegroundColor Yellow
-Write-Host "   Para tener info del remoto actualizada automaticamente, agrega esto"
-Write-Host "   a $ClaudeHome\settings.json en la seccion 'hooks':"
-Write-Host ""
-Get-Content "$ScriptDir\settings-hook.json"
-Write-Host ""
-
-Write-Host "=== Instalacion completa ===" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Proximos pasos:"
-Write-Host "  1. Configura variables de entorno para MCPs (ver mcp-secrets-guide.md):"
-Write-Host "     GITHUB_PERSONAL_ACCESS_TOKEN, DATABASE_URL, BRAVE_API_KEY"
-Write-Host "  2. Reinicia Claude Code"
-Write-Host "  3. Usa /proyecto para ver todos los proyectos"
-Write-Host "  4. Usa /proyecto yalo bo para activar un proyecto"
-Write-Host "  5. Edita $ClaudeHome\projects-registry.md para personalizar aliases"
 Write-Host ""
