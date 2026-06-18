@@ -146,6 +146,32 @@ if ($installClaude) {
     if ($cfg.permissions.allow -notcontains $writePermission) {
         $cfg.permissions.allow += $writePermission
     }
+    # Plugins — siempre asegurarse de que estén habilitados
+    $pluginsToEnable = @(
+        "frontend-design@claude-plugins-official",
+        "superpowers@claude-plugins-official",
+        "code-review@claude-plugins-official",
+        "context7@claude-plugins-official",
+        "skill-creator@claude-plugins-official",
+        "figma@claude-plugins-official",
+        "playwright@claude-plugins-official",
+        "typescript@claude-plugins-official",
+        "csharp@claude-plugins-official"
+    )
+    if (-not $cfg.PSObject.Properties['enabledPlugins']) {
+        $pluginsObj = [PSCustomObject]@{}
+        foreach ($p in $pluginsToEnable) { $pluginsObj | Add-Member -NotePropertyName $p -NotePropertyValue $true }
+        $cfg | Add-Member -NotePropertyName enabledPlugins -NotePropertyValue $pluginsObj -Force
+    } else {
+        foreach ($p in $pluginsToEnable) {
+            if (-not $cfg.enabledPlugins.PSObject.Properties[$p]) {
+                $cfg.enabledPlugins | Add-Member -NotePropertyName $p -NotePropertyValue $true
+            }
+        }
+    }
+    $cfg | ConvertTo-Json -Depth 10 | Set-Content $SettingsPath -Encoding utf8
+    Write-Host "  OK → plugins habilitados en settings.json" -ForegroundColor Green
+
     if (-not $cfg.PSObject.Properties['mcpServers']) {
         $proyectosPath = ($ProjectsRoot -replace '\\','/')
         $claudePathFwd = ($ClaudeHome -replace '\\','/')
@@ -269,6 +295,24 @@ interface:
     }
     $configRaw | Set-Content $configPath -Encoding utf8
     Write-Host "  OK → $addedCount MCP(s) agregados a config.toml" -ForegroundColor Green
+
+    # Plugins de Codex
+    Write-Host "  Habilitando plugins de Codex..." -ForegroundColor Yellow
+    $configRaw = Get-Content $configPath -Raw
+    $codexPlugins = @(
+        "codex-security@openai-curated",
+        "slack@openai-curated"
+    )
+    $pluginsAdded = 0
+    foreach ($p in $codexPlugins) {
+        $section = "[plugins.`"$p`"]"
+        if ($configRaw -notmatch [regex]::Escape($section)) {
+            $configRaw += "`n`n$section`nenabled = true"
+            $pluginsAdded++
+        }
+    }
+    $configRaw | Set-Content $configPath -Encoding utf8
+    Write-Host "  OK → $pluginsAdded plugin(s) agregados (Slack requiere auth manual la primera vez)" -ForegroundColor Green
 
     Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Magenta
 }
