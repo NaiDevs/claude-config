@@ -177,7 +177,7 @@ if ($installClaude) {
         $claudePathFwd = ($ClaudeHome -replace '\\','/')
         $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([PSCustomObject]@{
             github          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-github"); shell="powershell" }
-            filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,$claudePathFwd); shell="powershell" }
+            filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,"$($env:USERPROFILE -replace '\\','/')/OneDrive/Documentos/Obsidian",$claudePathFwd); shell="powershell" }
             memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
             "pg-labodega"   = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:LABODEGA_DEV") }
             "pg-yalo"       = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:YALO_DEV") }
