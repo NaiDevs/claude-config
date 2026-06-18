@@ -130,6 +130,29 @@ if ($installClaude) {
     if ($toAdd) { $toAdd -join "`n" | Add-Content $MemIdx -Encoding utf8 }
     Write-Host "  OK → MEMORY.md actualizado" -ForegroundColor Green
 
+    # mcp.json — DBs separadas, deshabilitadas por defecto
+    $mcpJsonPath = "$ClaudeHome\mcp.json"
+    if (-not (Test-Path $mcpJsonPath)) {
+        $mcpJson = @'
+{
+  "mcpServers": {
+    "pg-labodega":     { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:LABODEGA_DEV"] },
+    "pg-yalo":         { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:YALO_DEV"] },
+    "pg-corinsa":      { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:CORINSA_DEV"] },
+    "pg-ultimatelabs": { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:ULTIMATELABS_DEV"] },
+    "pg-emsula":       { "command": "powershell", "args": ["-Command", "npx -y mcp-server-postgres $env:EMSULA_DEV"] },
+    "ss-corinsa":      { "command": "powershell", "args": ["-Command", "npx -y mssql-mcp $env:CORINSA_SS"] },
+    "ss-emsula":       { "command": "powershell", "args": ["-Command", "npx -y mssql-mcp $env:EMSULA_SS"] },
+    "ss-yalo":         { "command": "powershell", "args": ["-Command", "npx -y mssql-mcp $env:YALO_SS"] }
+  }
+}
+'@
+        $mcpJson | Set-Content $mcpJsonPath -Encoding utf8
+        Write-Host "  OK → mcp.json creado con DBs deshabilitadas por defecto" -ForegroundColor Green
+    } else {
+        Write-Host "  OK → mcp.json ya existe" -ForegroundColor Green
+    }
+
     # NPM packages de MCPs
     Write-Host "  Instalando paquetes MCP..." -ForegroundColor Yellow
     npm install -g @modelcontextprotocol/server-github @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-memory mcp-server-postgres mssql-mcp --silent 2>$null
@@ -179,15 +202,11 @@ if ($installClaude) {
             github          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-github"); shell="powershell" }
             filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,"$($env:USERPROFILE -replace '\\','/')/OneDrive/Documentos/Obsidian",$claudePathFwd); shell="powershell" }
             memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
-            "pg-labodega"   = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:LABODEGA_DEV") }
-            "pg-yalo"       = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:YALO_DEV") }
-            "pg-corinsa"    = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:CORINSA_DEV") }
-            "pg-ultimatelabs" = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:ULTIMATELABS_DEV") }
-            "pg-emsula"     = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mcp-server-postgres `$env:EMSULA_DEV") }
-            "ss-corinsa"    = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:CORINSA_SS") }
-            "ss-emsula"     = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:EMSULA_SS") }
-            "ss-yalo"       = [PSCustomObject]@{ command="powershell"; args=@("-Command","npx -y mssql-mcp `$env:YALO_SS") }
         }) -Force
+        $cfg | Add-Member -NotePropertyName disabledMcpjsonServers -NotePropertyValue @(
+            "pg-labodega","pg-yalo","pg-corinsa","pg-ultimatelabs","pg-emsula",
+            "ss-corinsa","ss-emsula","ss-yalo"
+        ) -Force
         if ($hasEngram) {
             $cfg.mcpServers | Add-Member -NotePropertyName engram -NotePropertyValue ([PSCustomObject]@{ command="engram"; args=@("mcp") }) -Force
         }
