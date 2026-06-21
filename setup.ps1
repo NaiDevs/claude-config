@@ -196,7 +196,7 @@ if (Test-Path $EnvFile) {
         $parts = $_ -split '=', 2
         $key   = $parts[0].Trim()
         $value = $parts[1].Trim()
-        if ($key -and $value -notmatch 'your_|_here$|password$') {
+        if ($key -and $value -notmatch '(?i)(_here\b|^your_[a-z_]+$|^(changeme|password|secret|token|placeholder)$)') {
             [System.Environment]::SetEnvironmentVariable($key, $value, "User")
             $envVars[$key] = $value
             $loaded++
