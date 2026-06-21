@@ -17,9 +17,18 @@ $skills         = @("yalo-components", "yalo-database")
 # Clonar si no existe
 if (-not (Test-Path (Join-Path $yaloSkillsRepo ".git"))) {
     if (-not $Silent) { Write-Host "  Clonando YALO-SKILLS..." -ForegroundColor Yellow }
+    # Crear directorio padre si no existe
+    if (-not (Test-Path $yaloDir)) {
+        New-Item -ItemType Directory -Force $yaloDir | Out-Null
+    }
     git -C $yaloDir clone https://github.com/Yalo-Technologies/YALO-SKILLS.git --quiet 2>$null
     if (-not (Test-Path (Join-Path $yaloSkillsRepo ".git"))) {
         Write-Host "  ERROR: no se pudo clonar YALO-SKILLS" -ForegroundColor Red
+        Write-Host "  Posibles causas:" -ForegroundColor Yellow
+        Write-Host "    - Sin acceso a internet" -ForegroundColor DarkYellow
+        Write-Host "    - Repositorio privado (pedi acceso a tu equipo YALO)" -ForegroundColor DarkYellow
+        Write-Host "    - git no esta en el PATH" -ForegroundColor DarkYellow
+        Write-Host "  Corra manualmente: git clone https://github.com/Yalo-Technologies/YALO-SKILLS.git $yaloSkillsRepo" -ForegroundColor DarkYellow
         exit 1
     }
     $deploy = $true

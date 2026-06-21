@@ -733,6 +733,9 @@ if ($InstallYaloSkills -ne "no") {
     $yaloDeployScript = Join-Path $ScriptDir "yalo-skills-deploy.ps1"
     if (Test-Path $yaloDeployScript) {
         & $yaloDeployScript -Force
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  ! YALO-SKILLS no se pudo desplegar — el resto del setup continua igual" -ForegroundColor Yellow
+        }
     } else {
         Write-Host "  ! yalo-skills-deploy.ps1 no encontrado en el repo" -ForegroundColor Yellow
     }
