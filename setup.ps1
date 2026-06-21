@@ -1,5 +1,6 @@
 ﻿# setup.ps1 — Instalar claude-config en este dispositivo
 # Detecta automáticamente Claude Code y/o Codex e instala en ambos
+# Compatible con Windows, macOS y Linux (requiere PowerShell 7+ en Mac/Linux)
 #
 # Uso:
 #   .\setup.ps1                          → auto-detecta herramientas
@@ -7,24 +8,180 @@
 #   .\setup.ps1 -Tool codex              → solo Codex
 #   .\setup.ps1 -Tool both               → ambos
 #   .\setup.ps1 -ProjectsRoot "D:\Proyectos"
+#   .\setup.ps1 -ObsidianVault "~/Documents/Obsidian"   → si tu vault no está en la ubicación default
 
 param(
-    [string]$ProjectsRoot = "$env:USERPROFILE\OneDrive\Documentos\Proyectos",
+    [string]$ProjectsRoot  = "",
+    [string]$ObsidianVault = "",
     [ValidateSet("auto","claude","codex","both")]
     [string]$Tool = "auto"
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Detección de sistema operativo y paths base
+# ─────────────────────────────────────────────────────────────────────────────
+$IsWin   = ($env:OS -eq "Windows_NT") -or ($PSVersionTable.Platform -eq "Win32NT") -or (-not $PSVersionTable.Platform)
+$IsMac   = if (Get-Variable IsMacOS  -ErrorAction SilentlyContinue) { $IsMacOS  } else { $false }
+$IsLin   = if (Get-Variable IsLinux  -ErrorAction SilentlyContinue) { $IsLinux  } else { $false }
+$HomeDir = if ($IsWin) { $env:USERPROFILE } else { $HOME }
+
+if (-not $ProjectsRoot) {
+    $ProjectsRoot = if ($IsWin) {
+        "$HomeDir\OneDrive\Documentos\Proyectos"
+    } else {
+        "$HomeDir/OneDrive/Documentos/Proyectos"
+    }
+}
+
 $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ClaudeHome   = "$env:USERPROFILE\.claude"
-$CodexHome    = "$env:USERPROFILE\.codex"
-$Username     = $env:USERNAME
+$ClaudeHome   = if ($IsWin) { "$HomeDir\.claude" } else { "$HomeDir/.claude" }
+$CodexHome    = if ($IsWin) { "$HomeDir\.codex"  } else { "$HomeDir/.codex"  }
+$Username     = if ($IsWin) { $env:USERNAME } else { $env:USER }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resolver vault de Obsidian
+# ─────────────────────────────────────────────────────────────────────────────
+if (-not $ObsidianVault) {
+    $ObsidianVault = $env:OBSIDIAN_VAULT
+}
+if (-not $ObsidianVault) {
+    if ($IsWin) {
+        $ObsidianVault = "$HomeDir\OneDrive\Documentos\Obsidian"
+    } elseif ($IsMac) {
+        $candidates = @(
+            "$HomeDir/Library/CloudStorage/OneDrive-Personal/Documentos/Obsidian",
+            "$HomeDir/OneDrive/Documentos/Obsidian",
+            "$HomeDir/Documents/Obsidian"
+        )
+        $ObsidianVault = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $ObsidianVault) { $ObsidianVault = "$HomeDir/OneDrive/Documentos/Obsidian" }
+    } else {
+        $ObsidianVault = "$HomeDir/OneDrive/Documentos/Obsidian"
+    }
+}
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║      claude-config — Setup           ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Cyan
+$osSuffix = if ($IsWin) { "Windows" } elseif ($IsMac) { "macOS" } else { "Linux" }
+Write-Host "Sistema:    $osSuffix"
 Write-Host "Usuario:    $Username"
 Write-Host "Proyectos:  $ProjectsRoot"
+Write-Host "Obsidian:   $ObsidianVault"
+Write-Host ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRE — Verificar prerequisitos
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host "[ PRE ] Verificando prerequisitos..." -ForegroundColor Yellow
+$prereqOk    = $true
+$warnings    = @()
+
+# ── git ──────────────────────────────────────────────────────────────────────
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host "  ✗ git — NO encontrado" -ForegroundColor Red
+    Write-Host "    Instálalo antes de continuar:" -ForegroundColor Yellow
+    if ($IsWin)       { Write-Host "      winget install Git.Git"                           -ForegroundColor DarkYellow
+                        Write-Host "      o descarga: https://git-scm.com/download/win"     -ForegroundColor DarkYellow }
+    elseif ($IsMac)   { Write-Host "      brew install git"                                 -ForegroundColor DarkYellow }
+    else              { Write-Host "      sudo apt install git   (Debian/Ubuntu)"           -ForegroundColor DarkYellow
+                        Write-Host "      sudo dnf install git   (Fedora/RHEL)"             -ForegroundColor DarkYellow }
+    $prereqOk = $false
+} else {
+    Write-Host "  ✓ git  $(git --version)"  -ForegroundColor Green
+}
+
+# ── Node.js / npm ─────────────────────────────────────────────────────────────
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    Write-Host "  ✗ Node.js + npm — NO encontrado" -ForegroundColor Red
+    Write-Host "    Instálalo antes de continuar (el setup necesita npm para instalar MCPs):" -ForegroundColor Yellow
+    if ($IsWin)       { Write-Host "      winget install OpenJS.NodeJS"                     -ForegroundColor DarkYellow
+                        Write-Host "      o descarga: https://nodejs.org (versión LTS)"     -ForegroundColor DarkYellow }
+    elseif ($IsMac)   { Write-Host "      brew install node"                                -ForegroundColor DarkYellow }
+    else              { Write-Host "      sudo apt install nodejs npm   (Debian/Ubuntu)"    -ForegroundColor DarkYellow
+                        Write-Host "      o usa nvm: https://github.com/nvm-sh/nvm"        -ForegroundColor DarkYellow }
+    $prereqOk = $false
+} else {
+    $nodeVer = node --version 2>$null
+    Write-Host "  ✓ Node.js $nodeVer  /  npm $(npm --version)"  -ForegroundColor Green
+}
+
+# ── Claude Code ──────────────────────────────────────────────────────────────
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        Write-Host "  ~ claude — instalando..." -ForegroundColor Yellow
+        npm install -g @anthropic-ai/claude-code --silent 2>$null
+        if (Get-Command claude -ErrorAction SilentlyContinue) {
+            Write-Host "  ✓ Claude Code instalado" -ForegroundColor Green
+        } else {
+            Write-Host "  ✗ Claude Code — npm install falló, instala manualmente:" -ForegroundColor Red
+            Write-Host "      npm install -g @anthropic-ai/claude-code" -ForegroundColor DarkYellow
+            Write-Host "      o descarga: https://claude.ai/download" -ForegroundColor DarkYellow
+            $warnings += "Claude Code no pudo instalarse automáticamente"
+        }
+    } else {
+        Write-Host "  ✗ Claude Code — no se puede instalar sin npm" -ForegroundColor Red
+        $warnings += "Instala Node.js primero, luego: npm install -g @anthropic-ai/claude-code"
+    }
+} else {
+    Write-Host "  ✓ Claude Code  $(claude --version 2>$null)"  -ForegroundColor Green
+}
+
+# ── Codex ─────────────────────────────────────────────────────────────────────
+if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
+    if (Get-Command npm -ErrorAction SilentlyContinue) {
+        Write-Host "  ~ codex — instalando..." -ForegroundColor Yellow
+        npm install -g @openai/codex --silent 2>$null
+        if (Get-Command codex -ErrorAction SilentlyContinue) {
+            Write-Host "  ✓ Codex instalado" -ForegroundColor Green
+        } else {
+            Write-Host "  ✗ Codex — npm install falló, instala manualmente:" -ForegroundColor Red
+            Write-Host "      npm install -g @openai/codex" -ForegroundColor DarkYellow
+            $warnings += "Codex no pudo instalarse automáticamente"
+        }
+    }
+} else {
+    Write-Host "  ✓ Codex  $(codex --version 2>$null)"  -ForegroundColor Green
+}
+
+# ── PowerShell 7 en Mac/Linux (necesario para el hook) ───────────────────────
+if (-not $IsWin) {
+    $pwshOk = Get-Command pwsh -ErrorAction SilentlyContinue
+    if (-not $pwshOk) {
+        Write-Host "  ! PowerShell 7 — NO encontrado (necesario para el hook de commits)" -ForegroundColor Yellow
+        Write-Host "    El hook on-git-commit.ps1 NO funcionará sin PowerShell:" -ForegroundColor Yellow
+        if ($IsMac) { Write-Host "      brew install powershell"                           -ForegroundColor DarkYellow }
+        else        { Write-Host "      https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux" -ForegroundColor DarkYellow }
+        $warnings += "PowerShell 7 no encontrado — el hook de commits en Obsidian no funcionará"
+    } else {
+        Write-Host "  ✓ PowerShell 7 (pwsh)" -ForegroundColor Green
+    }
+}
+
+# ── Obsidian vault ────────────────────────────────────────────────────────────
+if (-not (Test-Path $ObsidianVault)) {
+    Write-Host "  ! Obsidian vault — NO encontrado en: $ObsidianVault" -ForegroundColor Yellow
+    Write-Host "    Opciones:" -ForegroundColor Yellow
+    Write-Host "      a) Crea la carpeta manualmente y abre ese vault en Obsidian" -ForegroundColor DarkYellow
+    Write-Host "      b) Pasa la ruta correcta: .\setup.ps1 -ObsidianVault 'ruta/a/tu/vault'" -ForegroundColor DarkYellow
+    Write-Host "      c) Define OBSIDIAN_VAULT en mcp.env" -ForegroundColor DarkYellow
+    $warnings += "Vault de Obsidian no encontrado — el hook escribirá pero los archivos Daily no se verán en Obsidian hasta que abras ese vault"
+} else {
+    Write-Host "  ✓ Vault de Obsidian encontrado" -ForegroundColor Green
+}
+
+if (-not $prereqOk) {
+    Write-Host ""
+    Write-Host "  Hay prerequisitos faltantes (marcados con ✗). Instálalos y vuelve a correr setup.ps1" -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
+if ($warnings.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  Avisos (el setup continúa pero algunas funciones estarán limitadas):" -ForegroundColor Yellow
+    $warnings | ForEach-Object { Write-Host "  · $_" -ForegroundColor DarkYellow }
+}
 Write-Host ""
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -390,11 +547,18 @@ if ($installClaude) {
     $hookCmd = "& '$autoUpdateScript' -Tool claude -Silent"
 
     # Desplegar script de hook a ~/.claude/hooks/
-    $hooksDir = "$ClaudeHome\hooks"
+    $hooksDir     = Join-Path $ClaudeHome "hooks"
+    $commitScript = Join-Path $hooksDir "on-git-commit.ps1"
     New-Item -ItemType Directory -Force $hooksDir | Out-Null
-    Copy-Item "$ScriptDir\hooks\on-git-commit.ps1" "$hooksDir\on-git-commit.ps1" -Force
+    Copy-Item (Join-Path $ScriptDir "hooks" "on-git-commit.ps1") $commitScript -Force
 
-    $commitScript = "$hooksDir\on-git-commit.ps1"
+    # Pasar el vault de Obsidian al env del usuario para que el hook lo use
+    if ($ObsidianVault) {
+        [System.Environment]::SetEnvironmentVariable("OBSIDIAN_VAULT", $ObsidianVault, "User")
+    }
+
+    # En Mac/Linux el hook usa pwsh; en Windows usa powershell
+    $hookShell = if ($IsWin) { "powershell" } else { "powershell" }  # Claude Code siempre usa "powershell" como shell key
 
     $hooksObj = [PSCustomObject]@{
         PostToolUse = @(
@@ -443,40 +607,71 @@ if ($installClaude) {
     Write-Host "  OK → hooks configurados (SessionStart auto-update + PostToolUse commit→Obsidian)" -ForegroundColor Green
 }
 
-# ── Windows Task Scheduler: diario + al inicio de sesión ────────────────────
+# ── Tareas programadas para auto-update ──────────────────────────────────────
 $toolArg = if ($installClaude -and $installCodex) { "both" } elseif ($installClaude) { "claude" } else { "codex" }
 
-# Tarea diaria a las 8am
-$dailyAction  = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NonInteractive -WindowStyle Hidden -File `"$autoUpdateScript`" -Tool $toolArg -Silent"
-$dailyTrigger = New-ScheduledTaskTrigger -Daily -At "08:00"
-$dailySettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -StartWhenAvailable
+if ($IsWin) {
+    # Windows Task Scheduler: diario + al inicio de sesión
+    $dailyAction   = New-ScheduledTaskAction -Execute "powershell.exe" `
+        -Argument "-NonInteractive -WindowStyle Hidden -File `"$autoUpdateScript`" -Tool $toolArg -Silent"
+    $dailyTrigger  = New-ScheduledTaskTrigger -Daily -At "08:00"
+    $dailySettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -StartWhenAvailable
+    Register-ScheduledTask -TaskName "AgentAIConfig-DailyUpdate" -Action $dailyAction `
+        -Trigger $dailyTrigger -Settings $dailySettings `
+        -Description "Actualiza agent-ai-config diariamente a las 8am" -Force | Out-Null
+    Write-Host "  OK → Tarea diaria registrada (08:00 AM)" -ForegroundColor Green
 
-Register-ScheduledTask `
-    -TaskName   "AgentAIConfig-DailyUpdate" `
-    -Action     $dailyAction `
-    -Trigger    $dailyTrigger `
-    -Settings   $dailySettings `
-    -Description "Actualiza agent-ai-config diariamente a las 8am" `
-    -Force | Out-Null
-Write-Host "  OK → Tarea diaria registrada (08:00 AM)" -ForegroundColor Green
+    $logonAction   = New-ScheduledTaskAction -Execute "powershell.exe" `
+        -Argument "-NonInteractive -WindowStyle Hidden -File `"$autoUpdateScript`" -Tool $toolArg -Silent"
+    $logonTrigger  = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $logonSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -StartWhenAvailable
+    Register-ScheduledTask -TaskName "AgentAIConfig-OnLogon" -Action $logonAction `
+        -Trigger $logonTrigger -Settings $logonSettings `
+        -Description "Actualiza agent-ai-config al iniciar sesión en Windows" -Force | Out-Null
+    Write-Host "  OK → Tarea al inicio de sesión registrada" -ForegroundColor Green
 
-# Tarea al inicio de sesión de Windows (para Codex y como respaldo)
-$logonAction  = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NonInteractive -WindowStyle Hidden -File `"$autoUpdateScript`" -Tool $toolArg -Silent"
-$logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$logonSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3) -StartWhenAvailable
+} elseif ($IsMac) {
+    # macOS launchd: equivalente a tarea diaria
+    $plistName = "com.nai.agent-ai-config.update"
+    $plistPath = "$HOME/Library/LaunchAgents/$plistName.plist"
+    $plistContent = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>$plistName</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>pwsh</string>
+        <string>-NonInteractive</string>
+        <string>-File</string>
+        <string>$autoUpdateScript</string>
+        <string>-Tool</string><string>$toolArg</string>
+        <string>-Silent</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+    <key>RunAtLoad</key><false/>
+</dict>
+</plist>
+"@
+    New-Item -ItemType Directory -Force "$HOME/Library/LaunchAgents" | Out-Null
+    $plistContent | Set-Content $plistPath -Encoding utf8
+    launchctl load $plistPath 2>$null
+    Write-Host "  OK → LaunchAgent registrado ($plistPath)" -ForegroundColor Green
+    Write-Host "  Para activarlo manualmente: launchctl load $plistPath" -ForegroundColor DarkGray
 
-Register-ScheduledTask `
-    -TaskName   "AgentAIConfig-OnLogon" `
-    -Action     $logonAction `
-    -Trigger    $logonTrigger `
-    -Settings   $logonSettings `
-    -Description "Actualiza agent-ai-config al iniciar sesión en Windows" `
-    -Force | Out-Null
-Write-Host "  OK → Tarea al inicio de sesión registrada" -ForegroundColor Green
+} else {
+    # Linux: cron job
+    $cronLine = "0 8 * * * pwsh -NonInteractive -File `"$autoUpdateScript`" -Tool $toolArg -Silent"
+    $existing = crontab -l 2>/dev/null
+    if ($existing -notmatch [regex]::Escape($autoUpdateScript)) {
+        ($existing + "`n" + $cronLine).Trim() | crontab -
+        Write-Host "  OK → Cron job registrado (diario 08:00)" -ForegroundColor Green
+    } else {
+        Write-Host "  OK → Cron job ya existe" -ForegroundColor Green
+    }
+}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RESUMEN
