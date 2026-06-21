@@ -2,14 +2,19 @@
 # Despliega yalo-components y yalo-database (ignora yalo-turnos y yalo-turnos-cli)
 param(
     [switch]$Silent,
-    [switch]$Force   # forzar redespliegue aunque no haya cambios
+    [switch]$Force,        # forzar redespliegue aunque no haya cambios
+    [string]$ProjectsRoot  # carpeta raiz de proyectos; si no se pasa, usa la del usuario actual
 )
 
 $IsWin   = ($env:OS -eq "Windows_NT") -or (-not $PSVersionTable.Platform)
 $HomeDir = if ($IsWin) { $env:USERPROFILE } else { $HOME }
 
-$yaloSkillsRepo = Join-Path (Join-Path (Join-Path $HomeDir "OneDrive") "Documentos\Proyectos\YALO") "YALO-SKILLS"
-$yaloDir        = Split-Path $yaloSkillsRepo -Parent
+# Determinar dónde clonar: $ProjectsRoot\YALO\YALO-SKILLS
+if (-not $ProjectsRoot) {
+    $ProjectsRoot = if ($IsWin) { "$HomeDir\OneDrive\Documentos\Proyectos" } else { "$HomeDir/OneDrive/Documentos/Proyectos" }
+}
+$yaloDir        = Join-Path $ProjectsRoot "YALO"
+$yaloSkillsRepo = Join-Path $yaloDir "YALO-SKILLS"
 $claudeHome     = Join-Path $HomeDir ".claude"
 $codexHome      = Join-Path $HomeDir ".codex"
 $skills         = @("yalo-components", "yalo-database")

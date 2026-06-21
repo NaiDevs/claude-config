@@ -166,7 +166,7 @@ if ($UseObsidian -eq "yes") {
 
 # P7 — YALO Skills
 if ($InstallYaloSkills -eq "") {
-    $yaloSkillsPath = Join-Path (Join-Path (Join-Path $HomeDir "OneDrive") "Documentos\Proyectos\YALO") "YALO-SKILLS"
+    $yaloSkillsPath = Join-Path (Join-Path $ProjectsRoot "YALO") "YALO-SKILLS"
     $yaloPresent    = Test-Path (Join-Path $yaloSkillsPath ".git")
     $yaloStatus     = if ($yaloPresent) { "(ya clonado)" } else { "(se clonara de GitHub)" }
     $suggestYalo    = "s"
@@ -732,7 +732,7 @@ if ($InstallYaloSkills -ne "no") {
     Write-Host "[ 3.5 ] Desplegando YALO-SKILLS..." -ForegroundColor Yellow
     $yaloDeployScript = Join-Path $ScriptDir "yalo-skills-deploy.ps1"
     if (Test-Path $yaloDeployScript) {
-        & $yaloDeployScript -Force
+        & $yaloDeployScript -Force -ProjectsRoot $ProjectsRoot
         if ($LASTEXITCODE -ne 0) {
             Write-Host "  ! YALO-SKILLS no se pudo desplegar — el resto del setup continua igual" -ForegroundColor Yellow
         }

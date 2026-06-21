@@ -41,5 +41,19 @@ if ([int]$behind -gt 0) {
 # Actualizar YALO-SKILLS y redesplegar skills
 $deployScript = Join-Path $repo "yalo-skills-deploy.ps1"
 if (Test-Path $deployScript) {
-    if ($Silent) { & $deployScript -Silent } else { & $deployScript }
+    # Intentar leer ProjectsRoot desde settings de Claude Code; si no, usar default
+    $settingsFile  = "$env:USERPROFILE\.claude\settings.json"
+    $projectsRoot  = ""
+    if (Test-Path $settingsFile) {
+        try {
+            $s = Get-Content $settingsFile -Raw | ConvertFrom-Json
+            $fsArgs = $s.mcpServers.filesystem.args
+            if ($fsArgs -and $fsArgs.Count -gt 2) { $projectsRoot = $fsArgs[2] -replace '/', '\' }
+        } catch {}
+    }
+    if ($Silent) {
+        if ($projectsRoot) { & $deployScript -Silent -ProjectsRoot $projectsRoot } else { & $deployScript -Silent }
+    } else {
+        if ($projectsRoot) { & $deployScript -ProjectsRoot $projectsRoot } else { & $deployScript }
+    }
 }
