@@ -389,8 +389,12 @@ if ($installClaude) {
 
     $hookCmd = "& '$autoUpdateScript' -Tool claude -Silent"
 
-    # Construir hooks canónicos (SessionStart + PostToolUse para commits)
-    $commitHookPrompt = "Se acaba de ejecutar un git commit. El JSON en `$ARGUMENTS contiene tool_input.command (el comando) y tool_response (el output). Extrae: directorio del proyecto (inferir del path o del output), rama actual, mensaje del commit, archivos cambiados si aparecen en el output. Luego: 1) Guarda en el servidor MCP 'memory' una observación con create_entities o add_observations: entidad tipo 'Commit', atributos proyecto/rama/mensaje/fecha. 2) Escribe en C:/Users/naide/OneDrive/Documentos/Obsidian/Daily/<YYYY-MM-DD>.md una línea al final: '- [HH:MM] commit en <proyecto> (<rama>): <mensaje>'. Si el archivo daily no existe, créalo con encabezado '# <YYYY-MM-DD>'."
+    # Desplegar script de hook a ~/.claude/hooks/
+    $hooksDir = "$ClaudeHome\hooks"
+    New-Item -ItemType Directory -Force $hooksDir | Out-Null
+    Copy-Item "$ScriptDir\hooks\on-git-commit.ps1" "$hooksDir\on-git-commit.ps1" -Force
+
+    $commitScript = "$hooksDir\on-git-commit.ps1"
 
     $hooksObj = [PSCustomObject]@{
         PostToolUse = @(
@@ -398,11 +402,25 @@ if ($installClaude) {
                 matcher = "Bash"
                 hooks   = @(
                     [PSCustomObject]@{
-                        type          = "agent"
-                        if            = "Bash(git commit *)"
-                        prompt        = $commitHookPrompt
-                        timeout       = 60
-                        statusMessage = "Guardando commit en memoria..."
+                        type          = "command"
+                        if            = "Bash(git *)"
+                        shell         = "powershell"
+                        command       = "& '$commitScript'"
+                        timeout       = 15
+                        statusMessage = "Guardando en Obsidian..."
+                    }
+                )
+            },
+            [PSCustomObject]@{
+                matcher = "PowerShell"
+                hooks   = @(
+                    [PSCustomObject]@{
+                        type          = "command"
+                        if            = "PowerShell(git *)"
+                        shell         = "powershell"
+                        command       = "& '$commitScript'"
+                        timeout       = 15
+                        statusMessage = "Guardando en Obsidian..."
                     }
                 )
             }
@@ -422,7 +440,7 @@ if ($installClaude) {
     }
     $cfg | Add-Member -NotePropertyName hooks -NotePropertyValue $hooksObj -Force
     $cfg | ConvertTo-Json -Depth 15 | Set-Content $SettingsPath -Encoding utf8
-    Write-Host "  OK → hooks configurados (SessionStart auto-update + PostToolUse commit→memoria)" -ForegroundColor Green
+    Write-Host "  OK → hooks configurados (SessionStart auto-update + PostToolUse commit→Obsidian)" -ForegroundColor Green
 }
 
 # ── Windows Task Scheduler: diario + al inicio de sesión ────────────────────

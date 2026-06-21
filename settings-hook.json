@@ -5,11 +5,25 @@
         "matcher": "Bash",
         "hooks": [
           {
-            "type": "agent",
-            "if": "Bash(git commit *)",
-            "prompt": "Se acaba de ejecutar un git commit. El JSON en $ARGUMENTS contiene tool_input.command (el comando) y tool_response (el output). Extrae: directorio del proyecto (inferir del path o del output), rama actual, mensaje del commit, archivos cambiados si aparecen en el output. Luego: 1) Guarda en el servidor MCP 'memory' una observación con create_entities o add_observations: entidad tipo 'Commit', atributos proyecto/rama/mensaje/fecha. 2) Escribe en C:/Users/naide/OneDrive/Documentos/Obsidian/Daily/<YYYY-MM-DD>.md una línea al final: '- [HH:MM] commit en <proyecto> (<rama>): <mensaje>'. Si el archivo daily no existe, créalo con encabezado '# <YYYY-MM-DD>'.",
-            "timeout": 60,
-            "statusMessage": "Guardando commit en memoria..."
+            "type": "command",
+            "if": "Bash(git *)",
+            "shell": "powershell",
+            "command": "& 'C:\\Users\\naide\\.claude\\hooks\\on-git-commit.ps1'",
+            "timeout": 15,
+            "statusMessage": "Guardando en Obsidian..."
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "PowerShell(git *)",
+            "shell": "powershell",
+            "command": "& 'C:\\Users\\naide\\.claude\\hooks\\on-git-commit.ps1'",
+            "timeout": 15,
+            "statusMessage": "Guardando en Obsidian..."
           }
         ]
       }
