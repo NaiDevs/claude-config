@@ -39,61 +39,7 @@ if ([int]$behind -gt 0) {
 & "$repo\sync.ps1" -Silent
 
 # Actualizar YALO-SKILLS y redesplegar skills
-$yaloSkillsRepo = "$env:USERPROFILE\OneDrive\Documentos\Proyectos\YALO\YALO-SKILLS"
-$yaloDir        = "$env:USERPROFILE\OneDrive\Documentos\Proyectos\YALO"
-$claudeHome     = "$env:USERPROFILE\.claude"
-$codexHome      = "$env:USERPROFILE\.codex"
-$skills         = "yalo-components", "yalo-database"
-
-if (-not (Test-Path "$yaloSkillsRepo\.git")) {
-    if (-not $Silent) { Write-Host "[YALO-SKILLS] Clonando repo..." -ForegroundColor Yellow }
-    git -C $yaloDir clone https://github.com/Yalo-Technologies/YALO-SKILLS.git --quiet 2>$null
-    $deploySkills = $true
-} else {
-    git -C $yaloSkillsRepo fetch origin --quiet 2>$null
-    $yaloBehind = (git -C $yaloSkillsRepo rev-list "HEAD..origin/master" --count 2>$null).Trim()
-    if ([int]$yaloBehind -gt 0) {
-        git -C $yaloSkillsRepo pull origin master --quiet 2>$null
-        if (-not $Silent) { Write-Host "[YALO-SKILLS] $yaloBehind commit(s) nuevos - redesplegando..." -ForegroundColor Cyan }
-        $deploySkills = $true
-    } else {
-        $deploySkills = $false
-        if (-not $Silent) { Write-Host "[YALO-SKILLS] Al dia" -ForegroundColor DarkGray }
-    }
-}
-
-if ($deploySkills) {
-    foreach ($skill in $skills) {
-        $skillMd = Join-Path $yaloSkillsRepo "$skill\SKILL.md"
-        if (-not (Test-Path $skillMd)) { continue }
-
-        # Claude Code: copiar SKILL.md reescribiendo paths de referencias a absolutos
-        $content   = [System.IO.File]::ReadAllText($skillMd, [System.Text.Encoding]::UTF8)
-        $refsAbs   = ($yaloSkillsRepo -replace "\\", "/") + "/$skill/references/"
-        $skillNorm = $skill -replace "-", ""
-        $content   = $content -replace "references/", $refsAbs
-        $content   = $content -replace "skills/$skill/references/", $refsAbs
-        $content   = $content -replace "skills/${skillNorm}/references/", $refsAbs
-        $scriptAbs = ($yaloSkillsRepo -replace "\\", "/") + "/$skill/"
-        $content   = $content -replace "~/.agents/skills/$skill/", $scriptAbs
-        $content   = $content -replace "~/.agents/skills/${skillNorm}/", $scriptAbs
-        [System.IO.File]::WriteAllText((Join-Path $claudeHome "commands\$skill.md"), $content, [System.Text.Encoding]::UTF8)
-
-        # Codex: copiar directorio completo + openai.yaml
-        $codexSkillDir = Join-Path $codexHome "skills\$skill"
-        New-Item -ItemType Directory -Force $codexSkillDir | Out-Null
-        Get-ChildItem (Join-Path $yaloSkillsRepo $skill) | Copy-Item -Destination $codexSkillDir -Recurse -Force
-        $agentsDir = Join-Path $codexSkillDir "agents"
-        New-Item -ItemType Directory -Force $agentsDir | Out-Null
-        $yamlLines = @(
-            "interface:",
-            "  display_name: $skill",
-            "  short_description: Yalo skill $skill",
-            "  default_prompt: Activate the $skill skill."
-        )
-        [System.IO.File]::WriteAllLines((Join-Path $agentsDir "openai.yaml"), $yamlLines, [System.Text.Encoding]::UTF8)
-    }
-    if (-not $Silent) {
-        Write-Host ("[YALO-SKILLS] Skills actualizados: " + [string]::Join(", ", $skills)) -ForegroundColor Green
-    }
+$deployScript = Join-Path $repo "yalo-skills-deploy.ps1"
+if (Test-Path $deployScript) {
+    if ($Silent) { & $deployScript -Silent } else { & $deployScript }
 }

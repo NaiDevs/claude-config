@@ -22,7 +22,9 @@ param(
     [string]$UseEngram   = "",
     [ValidateSet("","yes","no")]
     [string]$UseObsidian = "",
-    [switch]$SkipRegistryOverwrite
+    [switch]$SkipRegistryOverwrite,
+    [ValidateSet("","yes","no")]
+    [string]$InstallYaloSkills = ""
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +164,21 @@ if ($UseObsidian -eq "yes") {
     Write-Host ""
 }
 
-# P7/P8 — API Keys (solo check/aviso, no bloqueante)
+# P7 — YALO Skills
+if ($InstallYaloSkills -eq "") {
+    $yaloSkillsPath = Join-Path (Join-Path (Join-Path $HomeDir "OneDrive") "Documentos\Proyectos\YALO") "YALO-SKILLS"
+    $yaloPresent    = Test-Path (Join-Path $yaloSkillsPath ".git")
+    $yaloStatus     = if ($yaloPresent) { "(ya clonado)" } else { "(se clonara de GitHub)" }
+    $suggestYalo    = "s"
+    Write-Host "  7. ¿Queres instalar las skills de YALO? $yaloStatus"
+    Write-Host "     Incluye yalo-components (Angular) y yalo-database (Postgres)"
+    $ans = (Read-Host "     (s/n) [$suggestYalo]").Trim().ToLower()
+    if (-not $ans) { $ans = $suggestYalo }
+    $InstallYaloSkills = if ($ans -eq "s") { "yes" } else { "no" }
+    Write-Host ""
+}
+
+# P8/P9 — API Keys (solo check/aviso, no bloqueante)
 $anthropicKey = [System.Environment]::GetEnvironmentVariable("ANTHROPIC_API_KEY", "User")
 $openaiKey    = [System.Environment]::GetEnvironmentVariable("OPENAI_API_KEY",    "User")
 if (($Tool -eq "claude" -or $Tool -eq "both") -and -not $anthropicKey) {
@@ -186,6 +202,7 @@ Write-Host "  Proyectos    : $ProjectsRoot" -ForegroundColor Cyan
 Write-Host "  Registry     : $(if ($SkipRegistryOverwrite) { 'conservar el tuyo' } else { 'copiar plantilla' })" -ForegroundColor Cyan
 Write-Host "  Engram       : $UseEngram" -ForegroundColor Cyan
 Write-Host "  Obsidian     : $UseObsidian$(if ($UseObsidian -eq 'yes') { " ($ObsidianVault)" })" -ForegroundColor Cyan
+Write-Host "  YALO Skills  : $InstallYaloSkills" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "─────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host ""
@@ -708,6 +725,23 @@ interface:
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# FASE 3.5 — YALO-SKILLS: clonar y desplegar skills de Yalo
+# ─────────────────────────────────────────────────────────────────────────────
+if ($InstallYaloSkills -ne "no") {
+    Write-Host ""
+    Write-Host "[ 3.5 ] Desplegando YALO-SKILLS..." -ForegroundColor Yellow
+    $yaloDeployScript = Join-Path $ScriptDir "yalo-skills-deploy.ps1"
+    if (Test-Path $yaloDeployScript) {
+        & $yaloDeployScript -Force
+    } else {
+        Write-Host "  ! yalo-skills-deploy.ps1 no encontrado en el repo" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host ""
+    Write-Host "[ 3.5 ] YALO-SKILLS — omitido (no seleccionado)" -ForegroundColor DarkGray
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # FASE 4 — Engram compartido (si está disponible)
 # ─────────────────────────────────────────────────────────────────────────────
 if ($hasEngram -and $installClaude -and $installCodex) {
@@ -929,6 +963,14 @@ if (Test-Path "$ScriptDir\mcp.env") {
 # sync.ps1
 if (Test-Path "$ScriptDir\sync.ps1") { & $ok "sync.ps1 presente — auto-sync activo" }
 else                                  { & $bad "sync.ps1 falta en el repo" }
+
+# YALO Skills
+if ($InstallYaloSkills -ne "no") {
+    $yaloCmd  = Join-Path $ClaudeHome "commands\yalo-components.md"
+    $yaloDb   = Join-Path $ClaudeHome "commands\yalo-database.md"
+    if ((Test-Path $yaloCmd) -and (Test-Path $yaloDb)) { & $ok "YALO Skills desplegadas (yalo-components + yalo-database)" }
+    else                                                { & $wrn "YALO Skills no encontradas en ~/.claude/commands/" }
+}
 
 # Engram
 if ($UseEngram -eq "yes") {
