@@ -550,35 +550,25 @@ interface:
 
     # Hook PostToolUse commit → Obsidian Daily (equivalente al hook de Claude Code)
     Write-Host "  Configurando hook PostToolUse (commit → Obsidian)..." -ForegroundColor Yellow
-    $configRaw = Get-Content $configPath -Raw
+    $configRaw = [System.IO.File]::ReadAllText($configPath, [System.Text.Encoding]::UTF8)
 
-    # Limpiar bloques [[PostToolUse]] existentes
-    $lines2        = $configRaw -split "`n"
-    $inHookSection = $false
-    $cleanedHook   = @()
-    foreach ($line in $lines2) {
-        if ($line -match '^\[\[PostToolUse') { $inHookSection = $true }
-        elseif ($line -match '^\[') { $inHookSection = $false }
-        if (-not $inHookSection) { $cleanedHook += $line }
-    }
-    $configRaw = ($cleanedHook -join "`n").TrimEnd()
+    # Remover [[PostToolUse]] existente (siempre al final del archivo)
+    $configRaw = $configRaw -replace '(?s)\r?\n\[\[PostToolUse\]\].*$', ''
+    $configRaw = $configRaw.TrimEnd()
 
-    # Path al script del hook — mismo que usa Claude Code
-    # TOML literal strings (comillas simples) no necesitan escapar backslashes ni comillas
-    $hookScriptWin  = Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1"  # backslashes simples
+    # Path al script — TOML literal strings (comillas simples): no necesitan escapar nada
+    $hookScriptWin  = Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1"
     $hookScriptUnix = $hookScriptWin -replace '\\', '/'
 
-    $configRaw += @"
+    $hookBlock  = "`n`n[[PostToolUse]]`n[[PostToolUse.hooks]]`n"
+    $hookBlock += "type = `"command`"`n"
+    $hookBlock += "commandWindows = 'powershell.exe -NonInteractive -File `"$hookScriptWin`"'`n"
+    $hookBlock += "command = 'pwsh -NonInteractive -File `"$hookScriptUnix`"'`n"
+    $hookBlock += "timeout = 15`n"
+    $hookBlock += "statusMessage = `"Guardando en Obsidian...`""
 
-[[PostToolUse]]
-[[PostToolUse.hooks]]
-type = "command"
-commandWindows = 'powershell.exe -NonInteractive -File "$hookScriptWin"'
-command = 'pwsh -NonInteractive -File "$hookScriptUnix"'
-timeout = 15
-statusMessage = "Guardando en Obsidian..."
-"@
-    $configRaw | Set-Content $configPath -Encoding utf8
+    $configRaw += $hookBlock
+    [System.IO.File]::WriteAllText($configPath, $configRaw, [System.Text.Encoding]::UTF8)
     Write-Host "  OK → hook PostToolUse configurado en config.toml" -ForegroundColor Green
 
     Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Magenta
