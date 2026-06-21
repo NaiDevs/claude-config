@@ -536,8 +536,9 @@ interface:
     $configRaw = ($cleanedHook -join "`n").TrimEnd()
 
     # Path al script del hook — mismo que usa Claude Code
-    $hookScriptWin  = (Join-Path $ClaudeHome "hooks" "on-git-commit.ps1") -replace '\\', '\\'
-    $hookScriptUnix = (Join-Path $ClaudeHome "hooks" "on-git-commit.ps1") -replace '\\', '/'
+    # Join-Path con 3 args requiere PS7; anidamos para compatibilidad con PS5.1
+    $hookScriptWin  = (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1") -replace '\\', '\\'
+    $hookScriptUnix = (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1") -replace '\\', '/'
 
     $configRaw += @"
 
@@ -582,7 +583,7 @@ if ($installClaude) {
     $hooksDir     = Join-Path $ClaudeHome "hooks"
     $commitScript = Join-Path $hooksDir "on-git-commit.ps1"
     New-Item -ItemType Directory -Force $hooksDir | Out-Null
-    Copy-Item (Join-Path $ScriptDir "hooks" "on-git-commit.ps1") $commitScript -Force
+    Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-git-commit.ps1") $commitScript -Force
 
     # Pasar el vault de Obsidian al env del usuario para que el hook lo use
     if ($ObsidianVault) {
