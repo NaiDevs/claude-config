@@ -188,21 +188,37 @@ Write-Host ""
 # FASE 0 — Leer mcp.env y cargar env vars
 # ─────────────────────────────────────────────────────────────────────────────
 Write-Host "[ 0 ] Cargando tokens desde mcp.env..." -ForegroundColor Yellow
-$EnvFile = "$ScriptDir\mcp.env"
-$envVars = @{}   # hashtable con todas las vars reales del archivo (sin placeholders)
+$EnvFile  = "$ScriptDir\mcp.env"
+$envVars  = @{}   # hashtable con todas las vars reales del archivo (sin placeholders)
+$vpnVars  = @()   # keys marcadas con # vpn — se agregarán a disabledMcpjsonServers
 if (Test-Path $EnvFile) {
-    $loaded = 0
-    Get-Content $EnvFile | Where-Object { $_ -notmatch '^\s*#' -and $_ -match '=' } | ForEach-Object {
-        $parts = $_ -split '=', 2
-        $key   = $parts[0].Trim()
-        $value = $parts[1].Trim()
-        if ($key -and $value -notmatch '(?i)(_here\b|^your_[a-z_]+$|^(changeme|password|secret|token|placeholder)$)') {
-            [System.Environment]::SetEnvironmentVariable($key, $value, "User")
-            $envVars[$key] = $value
-            $loaded++
+    $loaded      = 0
+    $lastIsVpn   = $false
+    foreach ($rawLine in (Get-Content $EnvFile)) {
+        if ($rawLine -match '^\s*#\s*vpn\s*$') {
+            $lastIsVpn = $true
+            continue
+        }
+        if ($rawLine -match '^\s*#' -or $rawLine.Trim() -eq '') {
+            # cualquier otro comentario o línea vacía resetea el flag
+            if ($rawLine -match '^\s*#') { $lastIsVpn = $false }
+            continue
+        }
+        if ($rawLine -match '=') {
+            $parts = $rawLine -split '=', 2
+            $key   = $parts[0].Trim()
+            $value = $parts[1].Trim()
+            if ($key -and $value -notmatch '(?i)(_here\b|^your_[a-z_]+$|^(changeme|password|secret|token|placeholder)$)') {
+                [System.Environment]::SetEnvironmentVariable($key, $value, "User")
+                $envVars[$key] = $value
+                $loaded++
+                if ($lastIsVpn) { $vpnVars += $key }
+            }
+            $lastIsVpn = $false
         }
     }
-    Write-Host "     OK → $loaded variable(s) cargadas" -ForegroundColor Green
+    $vpnMsg = if ($vpnVars.Count -gt 0) { " ($($vpnVars.Count) marcadas como VPN)" } else { "" }
+    Write-Host "     OK → $loaded variable(s) cargadas$vpnMsg" -ForegroundColor Green
 } else {
     Write-Host "     mcp.env no encontrado — copia mcp.env.example → mcp.env y llena los valores" -ForegroundColor DarkYellow
 }
@@ -358,10 +374,7 @@ if ($installClaude) {
             filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,"$($env:USERPROFILE -replace '\\','/')/OneDrive/Documentos/Obsidian",$claudePathFwd); shell="powershell" }
             memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
         }) -Force
-        $cfg | Add-Member -NotePropertyName disabledMcpjsonServers -NotePropertyValue @(
-            "pg-labodega","pg-yalo","pg-corinsa","pg-ultimatelabs","pg-emsula",
-            "ss-corinsa","ss-emsula","ss-yalo"
-        ) -Force
+        $cfg | Add-Member -NotePropertyName disabledMcpjsonServers -NotePropertyValue @() -Force
         if ($hasEngram) {
             $cfg.mcpServers | Add-Member -NotePropertyName engram -NotePropertyValue ([PSCustomObject]@{ command="engram"; args=@("mcp") }) -Force
         }
@@ -369,6 +382,21 @@ if ($installClaude) {
         Write-Host "  OK → settings.json con MCPs configurados" -ForegroundColor Green
     } else {
         Write-Host "  OK → settings.json ya tenía MCPs" -ForegroundColor Green
+    }
+
+    # Actualizar disabledMcpjsonServers con las DBs marcadas # vpn en mcp.env
+    $cfg = Get-Content $SettingsPath -Raw | ConvertFrom-Json
+    $vpnMcpNames = @()
+    foreach ($key in $vpnVars) {
+        if ($key -match '^(.+)_DEV$') { $vpnMcpNames += "pg-$($matches[1].ToLower() -replace '_','-')" }
+        elseif ($key -match '^(.+)_SS$')  { $vpnMcpNames += "ss-$($matches[1].ToLower() -replace '_','-')" }
+    }
+    if ($vpnMcpNames.Count -gt 0) {
+        $existing = if ($cfg.PSObject.Properties['disabledMcpjsonServers']) { @($cfg.disabledMcpjsonServers) } else { @() }
+        $merged   = @($existing + $vpnMcpNames | Sort-Object -Unique)
+        $cfg | Add-Member -NotePropertyName disabledMcpjsonServers -NotePropertyValue $merged -Force
+        $cfg | ConvertTo-Json -Depth 10 | Set-Content $SettingsPath -Encoding utf8
+        Write-Host "  OK → $($vpnMcpNames.Count) DB(s) VPN deshabilitadas por default: $($vpnMcpNames -join ', ')" -ForegroundColor Green
     }
     Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Blue
 }
@@ -536,17 +564,17 @@ interface:
     $configRaw = ($cleanedHook -join "`n").TrimEnd()
 
     # Path al script del hook — mismo que usa Claude Code
-    # Join-Path con 3 args requiere PS7; anidamos para compatibilidad con PS5.1
-    $hookScriptWin  = (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1") -replace '\\', '\\'
-    $hookScriptUnix = (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1") -replace '\\', '/'
+    # TOML literal strings (comillas simples) no necesitan escapar backslashes ni comillas
+    $hookScriptWin  = Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1"  # backslashes simples
+    $hookScriptUnix = $hookScriptWin -replace '\\', '/'
 
     $configRaw += @"
 
 [[PostToolUse]]
 [[PostToolUse.hooks]]
 type = "command"
-commandWindows = "powershell.exe -NonInteractive -File `"$hookScriptWin`""
-command = "pwsh -NonInteractive -File `"$hookScriptUnix`""
+commandWindows = 'powershell.exe -NonInteractive -File "$hookScriptWin"'
+command = 'pwsh -NonInteractive -File "$hookScriptUnix"'
 timeout = 15
 statusMessage = "Guardando en Obsidian..."
 "@
