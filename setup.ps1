@@ -520,6 +520,38 @@ interface:
     $configRaw | Set-Content $configPath -Encoding utf8
     Write-Host "  OK → $pluginsAdded plugin(s) agregados (Slack requiere auth manual la primera vez)" -ForegroundColor Green
 
+    # Hook PostToolUse commit → Obsidian Daily (equivalente al hook de Claude Code)
+    Write-Host "  Configurando hook PostToolUse (commit → Obsidian)..." -ForegroundColor Yellow
+    $configRaw = Get-Content $configPath -Raw
+
+    # Limpiar bloques [[PostToolUse]] existentes
+    $lines2        = $configRaw -split "`n"
+    $inHookSection = $false
+    $cleanedHook   = @()
+    foreach ($line in $lines2) {
+        if ($line -match '^\[\[PostToolUse') { $inHookSection = $true }
+        elseif ($line -match '^\[') { $inHookSection = $false }
+        if (-not $inHookSection) { $cleanedHook += $line }
+    }
+    $configRaw = ($cleanedHook -join "`n").TrimEnd()
+
+    # Path al script del hook — mismo que usa Claude Code
+    $hookScriptWin  = (Join-Path $ClaudeHome "hooks" "on-git-commit.ps1") -replace '\\', '\\'
+    $hookScriptUnix = (Join-Path $ClaudeHome "hooks" "on-git-commit.ps1") -replace '\\', '/'
+
+    $configRaw += @"
+
+[[PostToolUse]]
+[[PostToolUse.hooks]]
+type = "command"
+commandWindows = "powershell.exe -NonInteractive -File `"$hookScriptWin`""
+command = "pwsh -NonInteractive -File `"$hookScriptUnix`""
+timeout = 15
+statusMessage = "Guardando en Obsidian..."
+"@
+    $configRaw | Set-Content $configPath -Encoding utf8
+    Write-Host "  OK → hook PostToolUse configurado en config.toml" -ForegroundColor Green
+
     Write-Host "└─────────────────────────────────────────────┘" -ForegroundColor Magenta
 }
 

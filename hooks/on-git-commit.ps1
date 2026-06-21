@@ -27,12 +27,13 @@ try {
     $branch = $m.Groups[1].Value.Trim()
     $msg    = ($m.Groups[2].Value -split '\\n')[0].Trim()
 
-    # Extraer nombre del proyecto desde -C "path"
-    $cmd  = [string]$data.tool_input.command
+    # Extraer nombre del proyecto — primero desde -C "path" (Claude Code), luego desde cwd (Codex)
+    $cmd  = if ($data.tool_input -is [string]) { [string]$data.tool_input } else { [string]$data.tool_input.command }
     $proj = "proyecto"
     if ($cmd -match '-C\s+"([^"]+)"') { $proj = Split-Path $matches[1] -Leaf }
     elseif ($cmd -match "-C\s+'([^']+)'") { $proj = Split-Path $matches[1] -Leaf }
     elseif ($cmd -match '-C\s+(\S+)') { $proj = Split-Path $matches[1] -Leaf }
+    elseif ($data.cwd) { $proj = Split-Path ([string]$data.cwd) -Leaf }
 
     # Resolver path del vault de Obsidian — prioridad: env var OBSIDIAN_VAULT > detección por OS
     $vaultBase = $env:OBSIDIAN_VAULT
