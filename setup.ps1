@@ -696,28 +696,38 @@ interface:
     $configRaw | Set-Content $configPath -Encoding utf8
     Write-Host "  OK → $pluginsAdded plugin(s) agregados (Slack requiere auth manual la primera vez)" -ForegroundColor Green
 
-    # Hook PostToolUse commit → Obsidian Daily (equivalente al hook de Claude Code)
+    # Hooks PostToolUse + Stop → Obsidian Daily / Engram (equivalente al hook de Claude Code)
     $configRaw = [System.IO.File]::ReadAllText($configPath, [System.Text.Encoding]::UTF8)
-    # Remover [[PostToolUse]] existente siempre (para no duplicar)
+    # Remover bloques de hooks existentes para no duplicar
     $configRaw = $configRaw -replace '(?s)\r?\n\[\[PostToolUse\]\].*$', ''
+    $configRaw = $configRaw -replace '(?s)\r?\n\[\[Stop\]\].*$', ''
     $configRaw = $configRaw.TrimEnd()
 
     if ($UseObsidian -eq "yes") {
-        Write-Host "  Configurando hook PostToolUse (commit → Obsidian)..." -ForegroundColor Yellow
-        $hookScriptWin  = Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1"
-        $hookScriptUnix = $hookScriptWin -replace '\\', '/'
+        Write-Host "  Configurando hooks PostToolUse + Stop (Obsidian + Engram)..." -ForegroundColor Yellow
+        $commitScriptWin  = Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1"
+        $commitScriptUnix = $commitScriptWin -replace '\\', '/'
+        $stopScriptWin    = Join-Path (Join-Path $ClaudeHome "hooks") "on-session-stop.ps1"
+        $stopScriptUnix   = $stopScriptWin -replace '\\', '/'
 
         $hookBlock  = "`n`n[[PostToolUse]]`n[[PostToolUse.hooks]]`n"
         $hookBlock += "type = `"command`"`n"
-        $hookBlock += "commandWindows = 'powershell.exe -NonInteractive -File `"$hookScriptWin`"'`n"
-        $hookBlock += "command = 'pwsh -NonInteractive -File `"$hookScriptUnix`"'`n"
+        $hookBlock += "commandWindows = 'powershell.exe -NonInteractive -File `"$commitScriptWin`"'`n"
+        $hookBlock += "command = 'pwsh -NonInteractive -File `"$commitScriptUnix`"'`n"
         $hookBlock += "timeout = 15`n"
         $hookBlock += "statusMessage = `"Guardando en Obsidian...`""
 
+        $hookBlock += "`n`n[[Stop]]`n[[Stop.hooks]]`n"
+        $hookBlock += "type = `"command`"`n"
+        $hookBlock += "commandWindows = 'powershell.exe -NonInteractive -File `"$stopScriptWin`"'`n"
+        $hookBlock += "command = 'pwsh -NonInteractive -File `"$stopScriptUnix`"'`n"
+        $hookBlock += "timeout = 20`n"
+        $hookBlock += "statusMessage = `"Registrando sesion en Obsidian...`""
+
         $configRaw += $hookBlock
-        Write-Host "  OK → hook PostToolUse configurado en config.toml" -ForegroundColor Green
+        Write-Host "  OK → hooks PostToolUse + Stop configurados en config.toml" -ForegroundColor Green
     } else {
-        Write-Host "  ~ hook PostToolUse Obsidian — omitido" -ForegroundColor DarkGray
+        Write-Host "  ~ hooks Obsidian/Engram — omitidos" -ForegroundColor DarkGray
     }
     [System.IO.File]::WriteAllText($configPath, $configRaw, [System.Text.Encoding]::UTF8)
 
@@ -773,6 +783,8 @@ if ($installClaude) {
     if ($UseObsidian -eq "yes") {
         New-Item -ItemType Directory -Force $hooksDir | Out-Null
         Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-git-commit.ps1") $commitScript -Force
+        $stopScript = Join-Path $hooksDir "on-session-stop.ps1"
+        Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-session-stop.ps1") $stopScript -Force
         if ($ObsidianVault) {
             [System.Environment]::SetEnvironmentVariable("OBSIDIAN_VAULT", $ObsidianVault, "User")
         }
@@ -792,8 +804,24 @@ if ($installClaude) {
         )
     }
 
+    $engramPrompt = "Eres el sistema de memoria Engram de Naidelyn. Session id: `$ARGUMENTS`n`nIgnora cualquier campo stop_hook_active o similares -- siempre ejecuta esta tarea.`nUSA SOLO herramientas nativas: Read, Write, Edit.`n`nPASOS:`n1. El input contiene el session_id. Construye la ruta: C:/Users/naide/.claude/projects/C--Users-naide/{session_id}.jsonl`n2. Lee ese archivo con Read.`n3. De los timestamps del transcript extrae la fecha (formato YYYY-MM-DD) y hora actual.`n4. Extrae lineas donde type=user y message.role=user. El campo content puede ser string o array con {type:text,text:...}. Ignora mensajes que empiecen con #, <, ---, o que tengan mas de 500 chars sin espacios (son skills).`n5. Identifica de los mensajes reales: proyectos o clientes mencionados, decisiones tecnicas, bugs resueltos, cambios de configuracion.`n6. Si hay menos de 2 mensajes reales validos, termina sin hacer nada.`n7. ENGRAM: lee C:/Users/naide/.claude/projects/C--Users-naide/memory/changes-log.md y agrega al final las decisiones/cambios identificados con formato: - FECHA | categoria | descripcion breve`n8. OBSIDIAN: lee C:/Users/naide/OneDrive/Documentos/Obsidian/Daily/FECHA.md, agrega al final una seccion '## Engram HH:MM' con bullets de lo identificado. Escribe el archivo.`n`nResponde unicamente: 'ok: X entradas' o 'trivial'."
+
+    $stopScript = Join-Path $hooksDir "on-session-stop.ps1"
     $stopHook = [PSCustomObject]@{
         hooks = @(
+            [PSCustomObject]@{
+                type          = "command"
+                command       = "& '$stopScript'"
+                shell         = "powershell"
+                timeout       = 20
+                statusMessage = "Registrando en Obsidian..."
+            },
+            [PSCustomObject]@{
+                type          = "agent"
+                prompt        = $engramPrompt
+                timeout       = 90
+                statusMessage = "Actualizando Engram..."
+            },
             [PSCustomObject]@{
                 type    = "command"
                 command = $syncCmd
@@ -811,7 +839,6 @@ if ($installClaude) {
                     hooks   = @(
                         [PSCustomObject]@{
                             type          = "command"
-                            if            = "Bash(git *)"
                             shell         = "powershell"
                             command       = "& '$commitScript'"
                             timeout       = 15
@@ -824,7 +851,6 @@ if ($installClaude) {
                     hooks   = @(
                         [PSCustomObject]@{
                             type          = "command"
-                            if            = "PowerShell(git *)"
                             shell         = "powershell"
                             command       = "& '$commitScript'"
                             timeout       = 15
@@ -836,7 +862,7 @@ if ($installClaude) {
             SessionStart = @($sessionStartHook)
             Stop         = @($stopHook)
         }
-        Write-Host "  OK → hooks configurados (SessionStart + PostToolUse Obsidian + Stop sync)" -ForegroundColor Green
+        Write-Host "  OK → hooks configurados (SessionStart + PostToolUse Obsidian + Stop Engram)" -ForegroundColor Green
     } else {
         $hooksObj = [PSCustomObject]@{
             SessionStart = @($sessionStartHook)

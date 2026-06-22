@@ -11,21 +11,33 @@ El vault de Obsidian vive en `C:\Users\naide\OneDrive\Documentos\Obsidian\` y es
 
 Cuando el usuario mencione un cliente o proyecto, buscar contexto relevante en `Clientes/<nombre>/` antes de responder.
 
-## Memoria persistente — Engram y Obsidian
+## Memoria persistente — Engram + Obsidian
 
-**OBLIGATORIO** — guardar proactivamente, sin esperar que el usuario lo pida:
+Dos sistemas en paralelo. Usarlos en conjunto, no como alternativas.
 
-| Evento | Dónde | Qué guardar |
-|--------|-------|-------------|
-| `git commit` ejecutado | memory MCP + `Obsidian/Daily/YYYY-MM-DD.md` | Proyecto, rama, mensaje del commit |
-| Decisión técnica (arquitectura, patrón, librería elegida) | memory MCP + `Obsidian/Decisiones/YYYY-MM-DD-<tema>.md` | Contexto, opciones, decisión y razón |
-| Bug complejo resuelto | memory MCP + `Obsidian/Clientes/<proyecto>/` | Síntoma, causa raíz, solución |
-| Cambio importante de configuración o setup | memory MCP + `Obsidian/Clientes/<proyecto>/` | Qué cambió y por qué |
+| Sistema | Para qué | Cuándo |
+|---------|----------|--------|
+| **Engram** (MCP `memory`) | Knowledge graph estructurado: proyectos, clientes, decisiones, bugs | Cuando yo (Claude) necesito recordar algo entre sesiones |
+| **Obsidian** (MCP `filesystem`) | Journal humano legible: daily notes, detalles narrativos, ADRs | Para que Naidelyn pueda leer el historial |
 
-### Cómo guardar en Claude Code
+> Los git commits, resúmenes de sesión y updates de Engram se registran automáticamente vía hooks — no hace falta hacerlo manualmente en esos casos.
 
-- **memory MCP** (servidor `memory`): usar `create_entities` y `add_observations`
-- **Obsidian** (servidor `filesystem`): escribir en `C:/Users/naide/OneDrive/Documentos/Obsidian/`
+### Cuándo guardar manualmente (OBLIGATORIO, sin esperar que el usuario lo pida)
+
+| Evento | Engram | Obsidian |
+|--------|--------|----------|
+| Decisión técnica importante | `create_entities` entityType=`decision` | `Obsidian/Decisiones/YYYY-MM-DD-<tema>.md` |
+| Bug complejo resuelto | `add_observations` al entity del proyecto | `Obsidian/Clientes/<proyecto>/` |
+| Cambio de config o setup | `add_observations` entityType=`config` | `Obsidian/Clientes/<proyecto>/` |
+| Nuevo proyecto/cliente identificado | `create_entities` entityType=`proyecto` o `cliente` | — |
+
+### Cómo guardar
+
+- **Engram (sesión activa)**: Write/Edit en `C:/Users/naide/.claude/projects/C--Users-naide/memory/` — siempre disponible
+- **Engram (MCP, si disponible)**: `mcp__memory__create_entities` / `mcp__memory__add_observations` — estructura adicional
+- **Obsidian**: Write en `C:/Users/naide/OneDrive/Documentos/Obsidian/` via `mcp__filesystem__write_file`
+
+Prioridad: si el MCP memory está disponible, usarlo. Si no, escribir directo a los archivos de memory.
 
 Para Daily notes: si el archivo del día ya existe, añadir al final. Si no existe, crearlo con encabezado `# YYYY-MM-DD`.
 
