@@ -12,6 +12,11 @@ Máximo 100 entradas — las más antiguas se eliminan cuando se supera ese lím
 
 <!-- formato: - YYYY-MM-DD | alias | commit/pr | descripción -->
 
+- 2026-06-22 | YALO | bug | DbContext namespace corregido (context.ps1: $namespace.DB.$contextName); YaloCobroEntities.cs y ProCategoriaproducto.cs restaurados; build limpio
+- 2026-06-22 | YALO | bug | EF Core scaffold sobrescribió ProCategoriaproducto.cs borrando campo Activoecommerce; build falló con 6 errores — diagnosticado con Select-String para aislar errores vs warnings
+- 2026-06-22 | YALO | config | Scaffolding EF Core: YaloApi/context.ps1 — agregado `--schema public` para excluir schemas problemáticos (aws_sqlserver_ext, pgmail)
+- 2026-06-22 | YALO | config | Scaffolding EF Core: YaloApi/context.ps1 genera YaloCobroEntities y YaloAUTHEntities con todas las tablas, credenciales dev integradas; .gitignore actualizado
+- 2026-06-22 | YALO | feat | Feature ecommerce exclusivo: columnas activoecommerce (nullable BIT) en pro_categoriaproducto y pro_producto; entidades C# con bool?; disable categorías y productos solo para ecommerce
 - 2026-06-21 | engram | config | Integración de agente Engram en hook Stop — sincronización automática de sesiones
 - 2026-06-21 | engram | bug-fix | Hooks no guardaban correctamente en Engram — agregado agente de persistencia
 - 2026-06-21 | agent-ai-config | feat | Hook Stop completo: on-session-stop.ps1 + agent Engram + fix filtros PostToolUse sin 'if'
