@@ -553,10 +553,35 @@ interface:
     [System.IO.File]::WriteAllText($instrFile, $instrExisting, [System.Text.Encoding]::UTF8)
     Write-Host "  OK → engram-instructions.md actualizado (UTF-8 correcto)" -ForegroundColor Green
 
+    # Registry de proyectos
+    if (-not $SkipRegistryOverwrite) {
+        Copy-Item "$ScriptDir\projects-registry.md" "$CodexHome\projects-registry.md" -Force
+        Write-Host "  OK → projects-registry.md copiado a ~/.codex/" -ForegroundColor Green
+    } else {
+        Write-Host "  ~ projects-registry.md conservado (no sobreescrito)" -ForegroundColor DarkGray
+    }
+
+    # Memoria Engram — mismos archivos que Claude Code
+    $CodexMemoryPath = "$CodexHome\memory"
+    New-Item -ItemType Directory -Force $CodexMemoryPath | Out-Null
+    Copy-Item "$ScriptDir\memory\*.md" "$CodexMemoryPath\" -Force
+    Write-Host "  OK → $((Get-ChildItem "$ScriptDir\memory\*.md").Count) archivos de memoria en ~/.codex/memory/" -ForegroundColor Green
+
     # Expresiones hondureñas — copiar a ~/.codex/ para que Codex las tenga disponibles
     if (Test-Path "$ScriptDir\expressions.md") {
         Copy-Item "$ScriptDir\expressions.md" "$CodexHome\expressions.md" -Force
         Write-Host "  OK → expressions.md copiado a ~/.codex/" -ForegroundColor Green
+    }
+
+    # Permisos de escritura — equivalente a permissions.allow de Claude Code
+    $configPath = "$CodexHome\config.toml"
+    $configRaw  = if (Test-Path $configPath) { Get-Content $configPath -Raw } else { "" }
+    if ($configRaw -notmatch '\[approvals\]') {
+        $configRaw += "`n`n[approvals]`ndisable_for_tools = [`"write_file`", `"run_terminal_command`", `"apply_patch`"]"
+        [System.IO.File]::WriteAllText($configPath, $configRaw, [System.Text.Encoding]::UTF8)
+        Write-Host "  OK → permisos de escritura configurados en config.toml" -ForegroundColor Green
+    } else {
+        Write-Host "  ~ permisos de escritura ya configurados" -ForegroundColor DarkGray
     }
 
     # MCPs en config.toml — reemplazar TODAS las secciones [mcp_servers.*] con las canónicas

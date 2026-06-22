@@ -93,7 +93,10 @@ Cerrar y reabrir Claude Code y/o Codex. Skills, MCPs y memoria quedan disponible
 |---|---|
 | Skills | `~/.codex/skills/<nombre>/SKILL.md` |
 | Reglas globales | `~/.codex/engram-instructions.md` |
-| MCPs (DBs, GitHub) | `~/.codex/config.toml` → `[mcp_servers.*]` |
+| Registry de proyectos | `~/.codex/projects-registry.md` |
+| Memoria Engram | `~/.codex/memory/*.md` |
+| MCPs (DBs, GitHub, filesystem) | `~/.codex/config.toml` → `[mcp_servers.*]` |
+| Permisos de escritura | `~/.codex/config.toml` → `[approvals]` |
 | Hook commits → Engram | `~/.codex/config.toml` → `[[PostToolUse]]` |
 
 ### Compartido
