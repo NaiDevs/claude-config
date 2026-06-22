@@ -26,9 +26,8 @@ Un solo repo, un solo `setup.ps1`, compatible con ambas herramientas.
 ### Paso 1 — Clonar el repo
 
 ```powershell
-$repoPath = "$env:USERPROFILE\OneDrive\Documentos\Proyectos\Nai\agent-ai-config"
-git clone https://github.com/NaiDevs/agent-ai-config.git $repoPath
-cd $repoPath
+git clone https://github.com/NaiDevs/agent-ai-config.git <ruta-destino>
+cd <ruta-destino>
 ```
 
 ### Paso 2 — Crear `mcp.env` con los tokens y conexiones
@@ -39,16 +38,17 @@ notepad mcp.env   # llenar con los valores reales
 ```
 
 ```env
-LABODEGA_DEV=postgresql://postgres:password@localhost:5432/labodega_dev
-YALO_DEV=postgresql://postgres:password@localhost:5432/yalo_dev
-CORINSA_DEV=postgresql://postgres:password@localhost:5432/corinsa_dev
-ULTIMATELABS_DEV=postgresql://postgres:password@localhost:5432/ultimatelabs_dev
-EMSULA_DEV=postgresql://postgres:password@localhost:5432/emsula_dev
-CORINSA_SS=Server=localhost,1433;Database=corinsa;User Id=sa;Password=password;TrustServerCertificate=True
-EMSULA_SS=Server=localhost,1433;Database=emsula;User Id=sa;Password=password;TrustServerCertificate=True
-YALO_SS=Server=localhost,1433;Database=yalo;User Id=sa;Password=password;TrustServerCertificate=True
+# PostgreSQL — una variable por proyecto (convención: NOMBRE_DEV)
+PROYECTO_DEV=postgresql://usuario:password@host:5432/nombre_db
+
+# SQL Server — una variable por proyecto (convención: NOMBRE_SS)
+PROYECTO_SS=Server=host,1433;Database=nombre;User Id=usuario;Password=pass;TrustServerCertificate=True
+
+# GitHub
 GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_token_here
 ```
+
+Ver `mcp.env.example` para la lista completa de variables disponibles.
 
 ### Paso 3 — Correr el instalador
 
@@ -121,22 +121,6 @@ La memoria funciona en dos niveles complementarios:
 - **Al hacer `git commit`** → `on-git-commit.ps1` agrega una entrada a `memory/changes-log.md`
 - **Al cerrar sesión (`/exit`)** → agent Engram lee el transcript, clasifica la sesión (DECISION/BUG/CONFIG/GENERAL), detecta el proyecto por las rutas tocadas, y agrega entradas al `changes-log.md`
 
-### Estructura de archivos de memoria
-
-```
-memory/
-├── MEMORY.md              # índice de todos los archivos de memoria
-├── changes-log.md         # log cronológico de commits y sesiones
-├── user-profile.md        # perfil y preferencias
-├── projects-yalo.md       # contexto de proyectos YALO
-├── projects-labodega.md   # contexto de La Bodega
-├── projects-corinsa.md    # contexto de CORINSA
-├── projects-ultimatelabs.md
-├── projects-otros.md      # EMSULA + NAI
-├── reference-jira.md      # cloudId y keys de Jira
-└── ...
-```
-
 ---
 
 ## MCPs configurados
@@ -145,14 +129,8 @@ memory/
 |---|---|---|---|
 | **github** | Buscar código en repos, PRs, issues | ✅ | ✅ |
 | **memory** | Knowledge graph Engram | ✅ | — |
-| **pg-labodega** | PostgreSQL — La Bodega | ✅ | ✅ |
-| **pg-yalo** | PostgreSQL — YALO | ✅ | ✅ |
-| **pg-corinsa** | PostgreSQL — CORINSA | ✅ | ✅ |
-| **pg-ultimatelabs** | PostgreSQL — Ultimate Labs | ✅ | ✅ |
-| **pg-emsula** | PostgreSQL — EMSULA | ✅ | ✅ |
-| **ss-corinsa** | SQL Server — CORINSA legacy | ✅ | ✅ |
-| **ss-emsula** | SQL Server — EMSULA Doctor legacy | ✅ | ✅ |
-| **ss-yalo** | SQL Server — YALO legacy | ✅ | ✅ |
+| **pg-\*** | PostgreSQL — un MCP por proyecto (auto-detectado desde `mcp.env`) | ✅ | ✅ |
+| **ss-\*** | SQL Server — un MCP por proyecto (auto-detectado desde `mcp.env`) | ✅ | ✅ |
 
 > Los MCPs cloud (Jira, Slack, Microsoft 365, Figma) van por claude.ai — no requieren configuración aquí.
 
@@ -187,7 +165,7 @@ Se activan **automáticamente por contexto** según lo configurado en `CLAUDE.md
 | `/firebase` | Push notifications FCM, Firebase Admin |
 | `/azure` | MSAL Angular, Azure AD, Azure Pipelines |
 | `/supabase` | Storage, queries, realtime Supabase |
-| `/swagger` | Documentación OpenAPI estándar YaloVendo |
+| `/swagger` | Documentación OpenAPI |
 | `/testing` | Unit tests, e2e, mocks por framework |
 | `/linting` | ESLint, Prettier, TSLint |
 | `/docs` | PDFs con QuestPDF, Excel con ClosedXML/ExcelJS |
@@ -198,26 +176,18 @@ Se activan **automáticamente por contexto** según lo configurado en `CLAUDE.md
 
 **Paso 1** — Agregar la variable en `mcp.env`:
 ```env
-NUEVO_PROYECTO_DEV=postgresql://postgres:password@localhost:5432/nuevo_db
+PROYECTO_DEV=postgresql://usuario:password@host:5432/nombre_db
 ```
 
-**Paso 2** — Correr `.\setup.ps1` de nuevo.
-
-O agregar manualmente en `~/.claude/settings.json`:
-```json
-"pg-nuevo": {
-  "command": "powershell",
-  "args": ["-Command", "npx -y mcp-server-postgres $env:NUEVO_PROYECTO_DEV"]
-}
-```
+**Paso 2** — Correr `.\setup.ps1` de nuevo. El MCP se agrega automáticamente.
 
 ---
 
 ## Actualizar en otro dispositivo
 
 ```powershell
-$repoPath = "$env:USERPROFILE\OneDrive\Documentos\Proyectos\Nai\agent-ai-config"
-git -C $repoPath pull
+cd <ruta-del-repo>
+git pull
 .\setup.ps1
 # Reiniciar Claude Code y/o Codex
 ```
@@ -231,4 +201,3 @@ git -C $repoPath pull
 | `corinsa *` / `cpa *` | CORINSA |
 | `ult *` | Ultimate Labs |
 | `emsula *` / `doctor *` | EMSULA |
-| `nai *` | NAI (personal) |
