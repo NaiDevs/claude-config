@@ -117,3 +117,71 @@ Cuando el usuario pida algo relacionado con alguna de estas tecnologías o accio
 - Nunca `console.log` en producción — usar el logger del framework
 - Siempre `async/await` — nunca callbacks
 - Tipos explícitos en TypeScript — nunca `any` salvo interop inevitable
+
+---
+
+## Loops de desarrollo
+
+### Development loop
+```
+Entender requerimiento → inspeccionar código existente → proponer approach
+→ implementar (mínimo necesario) → verificar que funciona → commit
+```
+
+### Debug loop
+```
+Reproducir el error → seguir el flujo (controller→service→repo) → identificar causa raíz
+→ fix mínimo → verificar que el error no aparece → verificar que nada se rompió
+```
+
+### DB Query loop
+```
+Identificar la query problemática → EXPLAIN ANALYZE → encontrar Seq Scan o N+1
+→ agregar índice o fix el ORM → medir el tiempo después
+```
+
+### API Contract loop
+```
+Definir request y response shape → verificar compatibilidad con frontend existente
+→ actualizar Swagger → actualizar Angular service → verificar que el contrato es aditivo
+```
+
+### Frontend Feature loop
+```
+Revisar el contrato API (Swagger o servicio Angular existente) → crear componente standalone
+→ inyectar servicio con inject() → usar ReactiveFormsModule si hay formulario
+→ integrar con Angular Material si corresponde → verificar en browser
+```
+
+### Auth & Permissions loop
+```
+Identificar el módulo y acción requeridos → agregar guard al endpoint o ruta
+→ verificar que el 403 retorna correctamente → verificar visibilidad en frontend
+```
+
+### PDF Report loop
+```
+Definir layout del PDF → usar /pdfkit → implementar PdfService con addPageHeader()
+→ implementar tabla con drawTable() (con manejo de saltos de página)
+→ streamToBuffer() → controller con Content-Disposition
+```
+
+### Commit/PR loop
+```
+git diff --staged → analizar cambios → generar mensaje descriptivo
+→ confirmar → git commit → si corresponde: push + PR
+```
+
+### Release loop
+```
+git log desde último tag → identificar cambios relevantes → actualizar CHANGELOG
+→ verificar que migrations están incluidas → deploy backend primero → deploy frontend
+→ smoke test post-deploy
+```
+
+### Memory loop
+```
+Al final de un bug complejo o decisión técnica importante:
+→ guardar en ~/.claude/projects/C--Users-naide/memory/changes-log.md
+→ si es decisión de arquitectura: crear archivo decision-*.md
+```

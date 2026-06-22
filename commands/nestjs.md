@@ -1,5 +1,6 @@
 ---
-description: Generador y asistente para proyectos NestJS — módulos, controladores, servicios, DTOs, TypeORM entities, guards y más
+name: nestjs
+description: Use this skill for NestJS modules, controllers, services, DTOs, guards, interceptors, pipes, decorators, @Injectable, @Module, @Controller, @Get, @Post, @Put, @Patch, @Delete, NestJS API, class-validator, class-transformer, ConfigService, NestJS project structure, crear módulo nest, crear servicio nest, crear controller nest, crear DTO, endpoint NestJS.
 ---
 
 # nestjs

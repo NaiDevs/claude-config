@@ -1,5 +1,6 @@
 ---
-description: Asistente para TypeORM 0.3.x — entidades, repositorios, relaciones, migrations, QueryBuilder, DataSource — para proyectos NestJS de La Bodega y YALO
+name: typeorm
+description: Use this skill for TypeORM entities, repositories, relations, QueryBuilder, DataSource, TypeORM migrations, @Entity, @Column, @PrimaryGeneratedColumn, @ManyToOne, @OneToMany, @ManyToMany, @JoinColumn, @Index, Repository<T>, findAndCount, createQueryBuilder, leftJoinAndSelect, TypeORM 0.3.x, NestJS TypeORM integration, crear entidad TypeORM, crear repositorio TypeORM, query TypeORM, relación TypeORM.
 ---
 
 # typeorm

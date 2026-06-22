@@ -1,5 +1,6 @@
 ---
-description: Asistente para Angular Material — genera componentes, tablas, formularios, dialogs, temas y snippets con la versión correcta del proyecto activo
+name: material
+description: Use this skill for Angular Material components, mat-table, mat-dialog, mat-form-field, mat-input, mat-select, mat-button, mat-icon, mat-toolbar, mat-sidenav, mat-paginator, mat-sort, MatDialog, MatSnackBar, MatFormFieldModule, ReactiveFormsModule with Material, Material theming, CDK, Angular Material 15+, tabla Angular Material, dialog Angular Material, formulario Material, paginador Material.
 ---
 
 # material

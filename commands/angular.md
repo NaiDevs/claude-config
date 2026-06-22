@@ -1,5 +1,6 @@
 ---
-description: Generador y asistente para proyectos Angular — componentes, servicios, guards, pipes, módulos con el stack real del proyecto activo
+name: angular
+description: Use this skill for Angular components, services, directives, pipes, guards, resolvers, standalone components, inject(), ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Angular Router, ActivatedRoute, HttpClient, Angular signals, ChangeDetectionStrategy, Angular 15+, standalone: true, crear componente Angular, crear servicio Angular, crear guard Angular, formulario Angular.
 ---
 
 # angular

@@ -360,8 +360,12 @@ Si ya tenés estos conectores en claude.ai, **no tiene sentido instalarlos como 
 
 ## Skills disponibles
 
-Se activan **automáticamente por contexto** según `CLAUDE.md`. No siempre hace falta escribir el comando.
+Se activan **automáticamente por contexto** según `CLAUDE.md` (Claude Code) y `AGENTS.md` (Codex). No siempre hace falta escribir el slash command.
 
+> **Claude Code** carga skills desde `~/.claude/commands/*.md` — las activa por palabras clave en la conversación.
+> **Codex** carga skills desde `~/.codex/skills/<name>/SKILL.md` — las activa por el campo `description` del frontmatter. Por eso las descriptions son largas y keyword-heavy en inglés.
+
+### Flujo de trabajo
 | Skill | Para qué |
 |---|---|
 | `/proyecto` | Navegar entre proyectos y workspaces con git sync |
@@ -371,26 +375,65 @@ Se activan **automáticamente por contexto** según `CLAUDE.md`. No siempre hace
 | `/jira` | Crear epics, historias y tareas en Jira |
 | `/notify` | Notificar cambios por Slack |
 | `/replicate` | Copiar patrones de un repo a otro |
-| `/angular` | Componentes, servicios, guards Angular |
-| `/material` | Tablas, dialogs, formularios Angular Material |
+
+### Frameworks y lenguajes
+| Skill | Para qué |
+|---|---|
+| `/nestjs` | Módulos, controllers, DTOs, guards, decoradores NestJS |
+| `/angular` | Componentes standalone, servicios, guards, formularios Angular 15+ |
+| `/material` | Tablas, dialogs, formularios, paginadores Angular Material |
 | `/tailwind` | Layouts, componentes, temas Tailwind CSS |
-| `/nestjs` | Módulos, controllers, DTOs, guards NestJS |
-| `/dotnet` | Endpoints, DTOs, migrations .NET |
+| `/dotnet` | Endpoints, DTOs, migrations, Swagger .NET |
 | `/nextjs` | Páginas, componentes, rutas Next.js |
+
+### Bases de datos y ORM
+| Skill | Para qué |
+|---|---|
+| `/typeorm` | Entidades, repos, relations, migrations TypeORM 0.3.x |
 | `/efcore` | DbContext, migrations, queries EF Core |
-| `/typeorm` | Entidades, repos, migrations TypeORM |
-| `/postgres` | Queries, índices, migrations PostgreSQL |
+| `/postgres` | Queries, índices, JSONB, migrations PostgreSQL |
 | `/sqlserver` | T-SQL, stored procedures, migrations SQL Server |
-| `/zustand` | Stores con persist, devtools, slices |
+| `/migration` | Workflow completo para migrations: generate, review, run, rollback |
+
+### Auth y seguridad
+| Skill | Para qué |
+|---|---|
 | `/jwt` | Auth JWT y API Key en NestJS y .NET |
+| `/permissions` | Sistema dinámico de permisos por módulo/acción, guards, directives Angular |
+| `/security` | OWASP: SQL injection, IDOR, secrets, CORS — revisión y fix |
+
+### Cloud y servicios externos
+| Skill | Para qué |
+|---|---|
 | `/aws` | Secrets Manager, S3, SES, DynamoDB |
-| `/firebase` | Push notifications FCM, Firebase Admin |
+| `/firebase` | Firebase Admin genérico |
+| `/firebase-fcm` | Push notifications FCM: FcmService, device tokens, topics |
 | `/azure` | MSAL Angular, Azure AD, Azure Pipelines |
 | `/supabase` | Storage, queries, realtime Supabase |
-| `/swagger` | Documentación OpenAPI |
+
+### Calidad y documentación
+| Skill | Para qué |
+|---|---|
+| `/swagger` | Documentación OpenAPI completa con @ApiTags, @ApiOperation, @ApiResponse |
+| `/api-contract` | Contratos API, request/response DTOs, compatibilidad frontend-backend |
 | `/testing` | Unit tests, e2e, mocks por framework |
 | `/linting` | ESLint, Prettier, TSLint |
 | `/docs` | PDFs con QuestPDF, Excel con ClosedXML/ExcelJS |
+| `/pdfkit` | Generación de PDFs con PDFKit: tablas, headers, footers, saltos de página |
+| `/zustand` | Stores con persist, devtools, slices |
+
+### Arquitectura y mantenimiento
+| Skill | Para qué |
+|---|---|
+| `/architect` | Diseño de features, estructura de módulos, decisiones técnicas |
+| `/refactor` | Refactoring controlado: extraer servicios, mejorar nombres, tipos |
+| `/performance` | N+1, índices faltantes, caching Redis, lazy loading Angular |
+| `/debug` | Bugs, errores, excepciones, endpoints que fallan |
+| `/db-audit` | Queries lentas, duplicados, EXPLAIN ANALYZE, datos incorrectos |
+| `/review` | Code review: arquitectura, correctness, seguridad, calidad |
+| `/release` | Workflow de deploy: CHANGELOG, orden de deploy, post-deploy |
+| `/hotfix` | Fix urgente: evaluate → reproduce → minimal fix → deploy |
+| `/doctor` | Diagnóstico de proyecto: dependencias, .env, DB, build |
 
 ### Cómo agregar una nueva skill
 

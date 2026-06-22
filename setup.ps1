@@ -572,6 +572,12 @@ interface:
         Write-Host "  OK → expressions.md copiado a ~/.codex/" -ForegroundColor Green
     }
 
+    # AGENTS.md — instrucciones globales para Codex (equivalente a CLAUDE.md)
+    if (Test-Path "$ScriptDir\AGENTS.md") {
+        Copy-Item "$ScriptDir\AGENTS.md" "$CodexHome\AGENTS.md" -Force
+        Write-Host "  OK → AGENTS.md instalado en ~/.codex/" -ForegroundColor Green
+    }
+
     # Permisos de escritura — equivalente a permissions.allow de Claude Code
     $configPath = "$CodexHome\config.toml"
     $configRaw  = if (Test-Path $configPath) { Get-Content $configPath -Raw } else { "" }
