@@ -1,0 +1,21 @@
+# Normalizar line endings al hacer checkout
+* text=auto
+
+# PowerShell — CRLF en Windows
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+
+# Markdown — LF
+*.md text eol=lf
+
+# JSON / TOML / env
+*.json text eol=lf
+*.toml text eol=lf
+*.env.example text eol=lf
+
+# Binarios — no tocar
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.zip binary

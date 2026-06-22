@@ -1,9 +1,24 @@
-# Secretos — nunca subir al repo
+# ─── Secretos — nunca subir al repo ──────────────────────────────────────────
 mcp.env
 *.env
 !*.env.example
 
-# Archivos de sistema
+# ─── Archivos locales de máquina específica ───────────────────────────────────
+.claude/settings.local.json
+*.local.json
+.last-update.log
+
+# ─── Directorios temporales ───────────────────────────────────────────────────
+tmp/
+temp/
+
+# ─── Sistema operativo ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ─── Editores ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~

@@ -43,6 +43,20 @@ $ClaudeHome   = if ($IsWin) { "$HomeDir\.claude" } else { "$HomeDir/.claude" }
 $CodexHome    = if ($IsWin) { "$HomeDir\.codex"  } else { "$HomeDir/.codex"  }
 $Username     = if ($IsWin) { $env:USERNAME } else { $env:USER }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Funcion de backup con timestamp
+# ─────────────────────────────────────────────────────────────────────────────
+function Backup-File {
+    param([string]$Path)
+    if (Test-Path $Path) {
+        $ts  = Get-Date -Format "yyyyMMdd-HHmmss"
+        $bak = "$Path.bak-$ts"
+        Copy-Item $Path $bak -Force
+        return $bak
+    }
+    return $null
+}
+
 Write-Host ""
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║      agent-config — Setup            ║" -ForegroundColor Cyan
@@ -350,8 +364,9 @@ if ($installClaude) {
     Write-Host "  OK → $((Get-ChildItem "$ScriptDir\commands\*.md").Count) commands" -ForegroundColor Green
 
     # CLAUDE.md global
+    $bak = Backup-File "$ClaudeHome\CLAUDE.md"
     Copy-Item "$ScriptDir\CLAUDE.md" "$ClaudeHome\CLAUDE.md" -Force
-    Write-Host "  OK → CLAUDE.md" -ForegroundColor Green
+    Write-Host "  OK → CLAUDE.md$(if ($bak) { " (backup: $(Split-Path $bak -Leaf))" })" -ForegroundColor Green
 
     # Registry de proyectos
     if (-not $SkipRegistryOverwrite) {
@@ -368,26 +383,7 @@ if ($installClaude) {
     Copy-Item "$ScriptDir\memory\*.md" "$MemoryPath\" -Force
     Write-Host "  OK → $((Get-ChildItem "$ScriptDir\memory\*.md").Count) archivos de memoria" -ForegroundColor Green
 
-    # MEMORY.md
-    $MemIdx    = "$MemoryPath\MEMORY.md"
-    $Entries   = @(
-        "- [Token economy + modelos](feedback-token-economy.md) — Haiku para git ops, Sonnet default, Opus solo con consulta previa",
-        "- [Perfil de usuario](user-profile.md) — Naidelyn, dev full-stack, 6 clientes, 58 repos",
-        "- [Log de cambios](changes-log.md) — historial de commits y PRs por proyecto",
-        "- [Jira cithn.atlassian.net](reference-jira.md) — cloudId + mapping alias→key",
-        "- [Config agent-config](setup-claude-config.md) — Repo portable de configuración",
-        "- [Proyectos YALO](projects-yalo.md) — 22 subproyectos POS/pagos, aliases ``yalo *``",
-        "- [Proyectos La Bodega](projects-labodega.md) — 10 subproyectos ecommerce, aliases ``bodega *``",
-        "- [Proyectos CORINSA](projects-corinsa.md) — 7 subproyectos BI/CPA, aliases ``corinsa *`` y ``cpa *``",
-        "- [Proyectos Ultimate Labs](projects-ultimatelabs.md) — 6 subproyectos labs, aliases ``ult *``",
-        "- [Proyectos EMSULA + NAI](projects-otros.md) — 12 subproyectos médicos y personales",
-        "- [Workspaces](projects-workspaces.md) — Grupos de repos para trabajo simultáneo con git sync"
-    )
-    $existing = if (Test-Path $MemIdx) { Get-Content $MemIdx } else { @() }
-    $toAdd    = $Entries | Where-Object { $existing -notcontains $_ }
-    if (-not (Test-Path $MemIdx)) { "# Memory Index" | Set-Content $MemIdx -Encoding utf8 }
-    if ($toAdd) { $toAdd -join "`n" | Add-Content $MemIdx -Encoding utf8 }
-    Write-Host "  OK → MEMORY.md actualizado" -ForegroundColor Green
+    # MEMORY.md ya viene correcto desde el Copy-Item anterior — no agregar nada más
 
     # mcp.json — DBs auto-detectadas desde mcp.env, siempre reescribir
     $mcpJsonPath = "$ClaudeHome\mcp.json"
@@ -798,6 +794,7 @@ if ($installClaude) {
     }
     Write-Host "  OK → hooks configurados (SessionStart + PostToolUse Engram + Stop Engram)" -ForegroundColor Green
     $cfg | Add-Member -NotePropertyName hooks -NotePropertyValue $hooksObj -Force
+    Backup-File $SettingsPath | Out-Null
     $cfg | ConvertTo-Json -Depth 15 | Set-Content $SettingsPath -Encoding utf8
 }
 
