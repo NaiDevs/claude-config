@@ -1,16 +1,5 @@
 # Instrucciones globales — Naidelyn
 
-## Vault de conocimiento personal
-
-El vault de Obsidian vive en `C:\Users\naide\OneDrive\Documentos\Obsidian\` y es accesible vía filesystem MCP.
-
-- **Memoria/** → contexto persistente sobre proyectos, clientes y preferencias
-- **Clientes/** → notas, decisiones y contexto específico por cliente
-- **Decisiones/** → ADRs y decisiones técnicas importantes
-- **Daily/** → notas del día a día
-
-Cuando el usuario mencione un cliente o proyecto, buscar contexto relevante en `Clientes/<nombre>/` antes de responder.
-
 ## Memoria persistente — Engram
 
 > Los git commits y resúmenes de sesión se registran automáticamente vía hooks — no hace falta hacerlo manualmente en esos casos.

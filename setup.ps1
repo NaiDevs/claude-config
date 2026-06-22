@@ -9,19 +9,14 @@
 #   .\setup.ps1 -Tool both                               → ambos (sin preguntar)
 #   .\setup.ps1 -ProjectsRoot "D:\Proyectos"             → carpeta de proyectos (sin preguntar)
 #   .\setup.ps1 -UseEngram yes|no                        → engram (sin preguntar)
-#   .\setup.ps1 -UseObsidian yes|no                      → obsidian (sin preguntar)
-#   .\setup.ps1 -ObsidianVault "~/Documents/Obsidian"   → vault path (sin preguntar)
 #   .\setup.ps1 -SkipRegistryOverwrite                   → no sobreescribir projects-registry.md
 
 param(
     [string]$ProjectsRoot  = "",
-    [string]$ObsidianVault = "",
     [ValidateSet("auto","claude","codex","both")]
     [string]$Tool = "auto",
     [ValidateSet("","yes","no")]
     [string]$UseEngram   = "",
-    [ValidateSet("","yes","no")]
-    [string]$UseObsidian = "",
     [switch]$SkipRegistryOverwrite,
     [ValidateSet("","yes","no")]
     [string]$InstallYaloSkills = ""
@@ -47,28 +42,6 @@ $ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ClaudeHome   = if ($IsWin) { "$HomeDir\.claude" } else { "$HomeDir/.claude" }
 $CodexHome    = if ($IsWin) { "$HomeDir\.codex"  } else { "$HomeDir/.codex"  }
 $Username     = if ($IsWin) { $env:USERNAME } else { $env:USER }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Resolver vault de Obsidian
-# ─────────────────────────────────────────────────────────────────────────────
-if (-not $ObsidianVault) {
-    $ObsidianVault = $env:OBSIDIAN_VAULT
-}
-if (-not $ObsidianVault) {
-    if ($IsWin) {
-        $ObsidianVault = "$HomeDir\OneDrive\Documentos\Obsidian"
-    } elseif ($IsMac) {
-        $candidates = @(
-            "$HomeDir/Library/CloudStorage/OneDrive-Personal/Documentos/Obsidian",
-            "$HomeDir/OneDrive/Documentos/Obsidian",
-            "$HomeDir/Documents/Obsidian"
-        )
-        $ObsidianVault = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-        if (-not $ObsidianVault) { $ObsidianVault = "$HomeDir/OneDrive/Documentos/Obsidian" }
-    } else {
-        $ObsidianVault = "$HomeDir/OneDrive/Documentos/Obsidian"
-    }
-}
 
 Write-Host ""
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Cyan
@@ -144,27 +117,7 @@ if ($UseEngram -eq "yes" -and -not $_hasEngram) {
     Write-Host ""
 }
 
-# P5 — Obsidian
-if ($UseObsidian -eq "") {
-    $vaultOk   = $ObsidianVault -and (Test-Path $ObsidianVault)
-    $obsStatus = if ($vaultOk) { "(vault encontrado)" } else { "(vault no encontrado)" }
-    $suggestObs = if ($vaultOk) { "s" } else { "n" }
-    Write-Host "  5. ¿Vas a usar Obsidian para guardar commits en daily notes? $obsStatus"
-    $ans = (Read-Host "     (s/n) [$suggestObs]").Trim().ToLower()
-    if (-not $ans) { $ans = $suggestObs }
-    $UseObsidian = if ($ans -eq "s") { "yes" } else { "no" }
-    Write-Host ""
-}
-
-# P6 — Vault path (solo si usa Obsidian)
-if ($UseObsidian -eq "yes") {
-    Write-Host "  6. Ruta del vault de Obsidian:"
-    $ans = (Read-Host "     [$ObsidianVault]").Trim()
-    if ($ans) { $ObsidianVault = $ans }
-    Write-Host ""
-}
-
-# P7 — YALO Skills
+# P5 — YALO Skills
 if ($InstallYaloSkills -eq "") {
     $yaloSkillsPath = Join-Path (Join-Path $ProjectsRoot "YALO") "YALO-SKILLS"
     $yaloPresent    = Test-Path (Join-Path $yaloSkillsPath ".git")
@@ -201,7 +154,6 @@ Write-Host "  Herramienta  : $toolLabel" -ForegroundColor Cyan
 Write-Host "  Proyectos    : $ProjectsRoot" -ForegroundColor Cyan
 Write-Host "  Registry     : $(if ($SkipRegistryOverwrite) { 'conservar el tuyo' } else { 'copiar plantilla' })" -ForegroundColor Cyan
 Write-Host "  Engram       : $UseEngram" -ForegroundColor Cyan
-Write-Host "  Obsidian     : $UseObsidian$(if ($UseObsidian -eq 'yes') { " ($ObsidianVault)" })" -ForegroundColor Cyan
 Write-Host "  YALO Skills  : $InstallYaloSkills" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "─────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
@@ -297,26 +249,10 @@ if (-not $IsWin) {
         Write-Host "    El hook on-git-commit.ps1 NO funcionará sin PowerShell:" -ForegroundColor Yellow
         if ($IsMac) { Write-Host "      brew install powershell"                           -ForegroundColor DarkYellow }
         else        { Write-Host "      https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux" -ForegroundColor DarkYellow }
-        $warnings += "PowerShell 7 no encontrado — el hook de commits en Obsidian no funcionará"
+        $warnings += "PowerShell 7 no encontrado — el hook de commits no funcionará"
     } else {
         Write-Host "  ✓ PowerShell 7 (pwsh)" -ForegroundColor Green
     }
-}
-
-# ── Obsidian vault ────────────────────────────────────────────────────────────
-if ($UseObsidian -eq "yes") {
-    if (-not (Test-Path $ObsidianVault)) {
-        Write-Host "  ! Obsidian vault — NO encontrado en: $ObsidianVault" -ForegroundColor Yellow
-        Write-Host "    Opciones:" -ForegroundColor Yellow
-        Write-Host "      a) Crea la carpeta manualmente y abre ese vault en Obsidian" -ForegroundColor DarkYellow
-        Write-Host "      b) Pasa la ruta correcta: .\setup.ps1 -ObsidianVault 'ruta/a/tu/vault'" -ForegroundColor DarkYellow
-        Write-Host "      c) Define OBSIDIAN_VAULT en mcp.env" -ForegroundColor DarkYellow
-        $warnings += "Vault de Obsidian no encontrado — el hook escribirá pero los archivos Daily no se verán en Obsidian hasta que abras ese vault"
-    } else {
-        Write-Host "  ✓ Vault de Obsidian encontrado" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  ~ Obsidian — omitido (no seleccionado)" -ForegroundColor DarkGray
 }
 
 if (-not $prereqOk) {
@@ -519,7 +455,7 @@ if ($installClaude) {
         $claudePathFwd = ($ClaudeHome -replace '\\','/')
         $cfg | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([PSCustomObject]@{
             github          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-github"); shell="powershell" }
-            filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,"$($env:USERPROFILE -replace '\\','/')/OneDrive/Documentos/Obsidian",$claudePathFwd); shell="powershell" }
+            filesystem      = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-filesystem",$proyectosPath,$claudePathFwd); shell="powershell" }
             memory          = [PSCustomObject]@{ command="npx"; args=@("-y","@modelcontextprotocol/server-memory"); shell="powershell" }
         }) -Force
         $cfg | Add-Member -NotePropertyName disabledMcpjsonServers -NotePropertyValue @() -Force
@@ -764,20 +700,13 @@ if ($installClaude) {
 
     $hookCmd = "& '$autoUpdateScript' -Tool claude -Silent"
 
-    # Desplegar script de hook a ~/.claude/hooks/ (solo si usa Obsidian)
+    # Desplegar scripts de hook a ~/.claude/hooks/
     $hooksDir     = Join-Path $ClaudeHome "hooks"
     $commitScript = Join-Path $hooksDir "on-git-commit.ps1"
-    if ($UseObsidian -eq "yes") {
-        New-Item -ItemType Directory -Force $hooksDir | Out-Null
-        Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-git-commit.ps1") $commitScript -Force
-        $stopScript = Join-Path $hooksDir "on-session-stop.ps1"
-        Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-session-stop.ps1") $stopScript -Force
-        if ($ObsidianVault) {
-            [System.Environment]::SetEnvironmentVariable("OBSIDIAN_VAULT", $ObsidianVault, "User")
-        }
-    }
+    New-Item -ItemType Directory -Force $hooksDir | Out-Null
+    Copy-Item (Join-Path (Join-Path $ScriptDir "hooks") "on-git-commit.ps1") $commitScript -Force
 
-    # Construir hooks object — SessionStart siempre; PostToolUse solo si usa Obsidian
+    # Construir hooks object
     $syncCmd = "& '$autoUpdateScript' -Silent"
 
     $sessionStartHook = [PSCustomObject]@{
@@ -945,15 +874,10 @@ if ($installCodex) {
     else            { & $bad "OPENAI_API_KEY falta — Codex no funcionará" }
 }
 
-# Obsidian
-if ($UseObsidian -eq "yes") {
-    $vaultOk = $ObsidianVault -and (Test-Path $ObsidianVault)
-    if ($vaultOk)  { & $ok  "Vault de Obsidian accesible: $ObsidianVault" }
-    else           { & $wrn "Vault de Obsidian no encontrado: $ObsidianVault" }
-    $hookOk = Test-Path (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1")
-    if ($hookOk)   { & $ok  "Hook on-git-commit.ps1 desplegado" }
-    else           { & $bad "Hook on-git-commit.ps1 falta en ~/.claude/hooks/" }
-}
+# Hooks
+$hookOk = Test-Path (Join-Path (Join-Path $ClaudeHome "hooks") "on-git-commit.ps1")
+if ($hookOk) { & $ok  "Hook on-git-commit.ps1 desplegado" }
+else         { & $bad "Hook on-git-commit.ps1 falta en ~/.claude/hooks/" }
 
 # mcp.env
 if (Test-Path "$ScriptDir\mcp.env") {
