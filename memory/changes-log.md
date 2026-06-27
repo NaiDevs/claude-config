@@ -98,3 +98,7 @@ Máximo 100 entradas — las más antiguas se eliminan cuando se supera ese lím
 - 2026-06-27 | YALO | decision | Refactor Material → Tailwind en YaloConsole: customer-success drawer desacoplado de Angular Material — HTML nativo + Tailwind para botones, form fields, selects, inputs, textareas; animación drawer-slide-in agregada en SCSS; módulos Material removidos (MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule); compilación limpia, cero errores
 - 2026-06-27 | yalo console | commit | feat(sales): agrega comunicación rápida en pipeline, restyling CS y nav (commit 52a520f, push a feat/naidelyn/ventas)
 - 2026-06-27 | yalo console | commit | feat(maintenance): porta módulo Config Ventas de React a Angular (commit 5cc2c24, branch feat/naidelyn/ventas)
+- 2026-06-27 | yalo console | commit | feat(sales-config): agrega 4 tabs faltantes del port React→Angular (commit b3f58e3, branch feat/naidelyn/ventas)
+- 2026-06-27 | YALO | feat | YaloConsole sales-config: remover max-w-6xl del contenedor principal para que los 10 tabs calipen en una sola línea; componente completado y optimizado para layout responsivo
+
+- 2026-06-27 | YALO | decision | Análisis de gaps en YaloConsole admin: 3 gaps funcionales (Países: edición inline de todos campos, Trial/Onboarding: Card 3 checklist con drag-drop, Planes: rubros recomendados + calcAnnual) + gaps menores (Productos: textarea descripción + botón desactivar en card, Add-ons: botón desactivar en tabla, Procesadores: advertencia bank_transfer + textarea descripción)
