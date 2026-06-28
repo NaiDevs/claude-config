@@ -12,10 +12,6 @@ Máximo 100 entradas — las más antiguas se eliminan cuando se supera ese lím
 
 <!-- formato: - YYYY-MM-DD | alias | commit/pr | descripción -->
 - 2026-06-26 | bodega ecommerce | commit | feat(labodega-tv): agrega hub completo, banners por sección y corrige redirección del botón
-
-- 2026-06-22 | YALO | bug | Identificado error en ejecución SQL: scaffold de EF Core ejecutó ALTER TABLE en tabla incorrecta (pro_categoriavariaciones); el target correcto es pro_categoriaproducto que mapea a ProCategoriaproducto.cs — solución: `ALTER TABLE pro_categoriaproducto ADD COLUMN activoecommerce boolean DEFAULT true;`
-- 2026-06-22 | YALO | bug | EF Core scaffold chain issue: YaloCobroEntities sobrescribía ProCategoriaproducto.cs eliminando Activoecommerce; YaloAUTHEntities fallaba al buildear; solución: ALTER TABLE pro_categoriaproducto ADD COLUMN activoecommerce bool NULL (debe ejecutarse en BD DEV)
-- 2026-06-22 | YALO | bug | DbContext namespace corregido (context.ps1: $namespace.DB.$contextName); YaloCobroEntities.cs y ProCategoriaproducto.cs restaurados; build limpio
 - 2026-06-22 | YALO | bug | EF Core scaffold sobrescribió ProCategoriaproducto.cs borrando campo Activoecommerce; build falló con 6 errores — diagnosticado con Select-String para aislar errores vs warnings
 - 2026-06-22 | YALO | config | Scaffolding EF Core: YaloApi/context.ps1 — agregado `--schema public` para excluir schemas problemáticos (aws_sqlserver_ext, pgmail)
 - 2026-06-22 | YALO | config | Scaffolding EF Core: YaloApi/context.ps1 genera YaloCobroEntities y YaloAUTHEntities con todas las tablas, credenciales dev integradas; .gitignore actualizado
@@ -110,3 +106,7 @@ Máximo 100 entradas — las más antiguas se eliminan cuando se supera ese lím
 
 - 2026-06-28 | YALO | decision | Refactor navigation.data.ts: consolidación de menú Dashboards — trasformación de item Cockpit (id '18', basic) a grupo collapsable Dashboards (id '1') con Cockpit como hijo (id '18', basic); corrección de colisión de IDs: cambio inicial a id '11' corregido a '18' para evitar duplicado con item de Credenciales; estructura expandida por default (unfolded: true)
 - 2026-06-28 | YALO | decision | KPIs dinámicos en Cockpit: iconos (Globe, Info, AlertTriangle, CheckCircle, DollarSign, Users, TrendingUp, TrendingDown, Activity) mapeados en lucide-icons.ts; se pasan como string al template cockpit.component.html línea 61 (<lucide-icon [name]="k.icon"...>) y se resuelven dinámicamente en componente; arquitectura consolidada en LucideIcons map (línea 132-274)
+
+- 2026-06-27 | YALO | decision | Reports Dashboard módulo completo: 4 archivos angular standalone (ReportsDashboardComponent con signals, computeds, CommonModule, FormsModule, BaseChartDirective; template 10 secciones; scss host scroll; routes apuntando a dashboards/reports); arquitectura consolidada con teamTotals computed; endpoints rutas integrados en navigation
+- 2026-06-27 | YALO | config | Refactor yalo-select en dashboard y formularios: 4+ instancias reemplazadas con `<yalo-select>` + `[clipToContainer]="false"` para permitir que overlay flote por encima del CDK (importante en dashboards con scroll); consolidación visual y comportamiento consistente en ReportsDashboard, SalesPipeline, Comisiones y componentes relacionados
+- 2026-06-27 | yalo console | commit | feat(dashboards): porta módulo Dashboards con cockpit y reportes de React a Angular (commit ae89e04, push a feat/naidelyn/ventas)
