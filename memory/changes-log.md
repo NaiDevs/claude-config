@@ -120,4 +120,6 @@ Máximo 100 entradas — las más antiguas se eliminan cuando se supera ese lím
 - 2026-06-29 | yalo console | commit | feat(sales-config): mapea trial, alertas y checklist al API real (commit 86c50b3, push a feat/naidelyn/ventas)
 - 2026-06-29 | yalo admin api | feat | crm-commissions-config: módulo NestJS con GET + PATCH upsert, entidad CrmCommissionsConfig (7 campos numéricos), registrado en app.module.ts
 - 2026-06-29 | yalo console | feat | Comisiones mapeadas al API real: interface CrmCommissionsConfig + signal commissionsConfig en servicio; effect sincroniza señales locales; saveCommSettings usa endpoint real
+- 2026-06-29 | yalo admin api | commit | feat(crm): agrega módulo crm-commissions-config con GET y PATCH upsert (commit 889735d, push a feat/naidelyn/permisos)
+- 2026-06-29 | yalo console | commit | feat(sales-config): mapea comisiones al API real + corrige reactividad con suscripción directa (commit a7cc37e, push a feat/naidelyn/ventas)
 - 2026-06-29 | yalo console | decision | Trial/Onboarding tab: 3 tablas en Crm-* — "Crm-trial-config" (trialInitialDays, trialExtensionDays, trialAdminApprovalThreshold), "Crm-alerts-config" (organicContactSlaHours, zombieTrialDays, dealAgingWarningDays, dealAgingCriticalDays, onboardingSlaDays), "Crm-onboarding-steps" (stepKey unique, stepLabel, stepOrder, active). Scripts SQL listos, entidades API pendientes.
